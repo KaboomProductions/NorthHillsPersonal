@@ -6,7 +6,7 @@ local replicatedStorage = game:GetService("ReplicatedStorage")
 local collectionService = game:GetService("CollectionService")
 
 local attributes = require(replicatedStorage.SharedAssets.Attributes)
-local inventoryConfig = require(replicatedStorage.SharedAssets.Dictionaries.InventoryConfig)
+local loadouts = require(replicatedStorage.SharedAssets.Dictionaries.Loadouts)
 local itemUtils = require(replicatedStorage.SharedUtilities.ItemUtils)
 
 local AnimationPreloader = require(script.Parent.AnimationPreloader)
@@ -100,7 +100,7 @@ function toolControllerHost.new(store: InventoryStore.Store, selection: Selectio
 		}, toolControllerHost) :: unknown
 	) :: ToolControllerHost
 
-	self.animationPreloader:preloadItemTypes(inventoryConfig.starterHotbar)
+	self.animationPreloader:preloadItemTypes(loadouts.getItemTypes(loadouts.starter))
 	self.animationPreloader:preloadState(store.state())
 	self.connections.changed = store.changed.Event:Connect(function()
 		if self.destroyed then

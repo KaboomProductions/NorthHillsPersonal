@@ -189,7 +189,10 @@ export type PersistenceStore = {
 export type Hydrator = {
 	factory: ItemFactory,
 	persistence: PersistenceStore,
-	_loadZone: (Hydrator, Player, State, protocol.Zone, unknown, { [string]: boolean }) -> (),
+	_loadZone: (Hydrator, Player, State, protocol.Zone, unknown, { [string]: boolean }) -> { protocol.ItemRecord },
+	_relocateToStorage: (Hydrator, Player, State, { protocol.ItemRecord }) -> (),
+	_resolveSavedInventory: (Hydrator, Player, unknown) -> { [string]: unknown },
+	_loadMaterials: (Hydrator, Player, State, unknown) -> (),
 	load: (Hydrator, Player, State) -> boolean,
 }
 
@@ -287,6 +290,8 @@ export type PendingThrow = {
 	item: Model,
 	itemId: string,
 	itemType: string,
+	zone: protocol.Zone,
+	index: number,
 	origin: Vector3,
 	direction: Vector3,
 	velocity: number,
@@ -294,6 +299,8 @@ export type PendingThrow = {
 	deadline: number,
 	launched: boolean,
 	finalized: boolean,
+	releaseThread: thread?,
+	timeoutThread: thread?,
 }
 
 export type PendingThrows = {
@@ -302,9 +309,13 @@ export type PendingThrows = {
 	cosmetics: ProjectileCosmetics,
 	toolHost: ControllerHost,
 	projectiles: ProjectileController,
+	worldItems: WorldItems,
 	folder: Folder,
 	pending: { [string]: PendingThrow },
 	_finalize: (PendingThrows, string) -> (),
+	_refund: (PendingThrows, string) -> (),
+	_restore: (PendingThrows, State, PendingThrow) -> protocol.InventoryResponse,
+	_dropToWorld: (PendingThrows, PendingThrow) -> (),
 	_launch: (PendingThrows, string) -> boolean,
 	throw: (PendingThrows, Player, protocol.ThrowPayload) -> protocol.InventoryResponse,
 	release: (PendingThrows, Player, protocol.ReleaseThrowPayload) -> protocol.InventoryResponse,

@@ -163,15 +163,14 @@ function itemFactory:create(itemType: string, record: CreateRecord?): Model
 	local item: Model = (clone :: unknown) :: Model
 	mutation.created(item)
 	local initialized, problem = pcall(function()
-	item.Name = itemType
-	item:SetAttribute("ItemId", itemIds.claim(input.itemId, itemUtils.generateItemId))
-	item:SetAttribute("ItemType", itemType)
-	item:SetAttribute("Class", itemUtils.getControllerClass(itemType))
-
-	item:SetAttribute("StackCount", count)
-	itemUtils.applyPersistentAttributes(item, config, input.attributes)
-	self:resetTransients(item)
-	setPartsAnchored(item, true)
+		item.Name = itemType
+		item:SetAttribute("ItemId", itemIds.claim(input.itemId, itemUtils.generateItemId))
+		item:SetAttribute("ItemType", itemType)
+		item:SetAttribute("Class", itemUtils.getControllerClass(itemType))
+		item:SetAttribute("StackCount", count)
+		itemUtils.applyPersistentAttributes(item, config, input.attributes)
+		self:resetTransients(item)
+		setPartsAnchored(item, true)
 	end)
 	if not initialized then
 		-- Claim may have failed before this clone received an ID.
@@ -232,12 +231,6 @@ function itemFactory:adoptWorldItem(item: Model): (Model?, string?)
 	itemUtils.applyPersistentAttributes(item, config, item:GetAttributes())
 	self:resetTransients(item)
 	setPartsAnchored(item, true)
-	end)
-	if not initialized then
-		-- Claim may have failed before this clone received an ID.
-		self:destroy(item)
-		error(tostring(problem), 0)
-	end
 	return item
 end
 

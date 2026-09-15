@@ -14,19 +14,31 @@ local buildingMapping = playerMemoryController.mapping
 
 local bucketUtilities = require(replicatedStorage.SharedUtilities.BucketUtils)
 local characterControllerModule = require(serverScriptService.Controllers.Character)
+local playerData = require(serverScriptService.GameHandler.PlayerData)
 
 local playerController = {}
 playerController.__index = playerController
 
+local function readPersistedCounter(profileData: { [string]: any }?, counterName: string): number
+	local storedCounter = profileData and profileData[counterName]
+	if typeof(storedCounter) ~= "number" or storedCounter ~= storedCounter or math.abs(storedCounter) == math.huge then
+		return 0
+	end
+	return math.max(math.floor(storedCounter), 0)
+end
+
 function playerController:preload()
-	self.player:SetAttribute("Money", 0)
-	self.player:SetAttribute("Survivals", 0)
+	local player = self.player
+	local profileData = playerData.get(player)
+
+	player:SetAttribute("Money", readPersistedCounter(profileData, "Money"))
+	player:SetAttribute("Survivals", readPersistedCounter(profileData, "Survivals"))
 
 	if not nightTimeValue.Value then
-		self.player:SetAttribute("Survived", true)
+		player:SetAttribute("Survived", true)
 	end
 
-	scoreTrackerController.startSession(self.player)
+	scoreTrackerController.startSession(player)
 end
 
 --// memory stuff is for phils ai
@@ -64,7 +76,8 @@ function playerController:onCharacterAdded(character: Model)
 	local player = self.player
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 
-	self.characterController = characterControllerModule.new(player, character)
+	local characterController = characterControllerModule.new(player, character)
+	self.characterController = characterController
 
 	if humanoid then
 		self.characterConnections.humanoidDied = humanoid.Died:Once(function()
@@ -72,8 +85,12 @@ function playerController:onCharacterAdded(character: Model)
 			character:SetAttribute("RagdollTimer", math.huge)
 		end)
 
-		task.spawn(function()
-			while player and character and self.characterController do
+		self.memoryThread = task.spawn(function()
+			local isCurrentCharacter = function()
+				return self.characterController == characterController and character.Parent ~= nil
+			end
+
+			while isCurrentCharacter() do
 				self:updatePlayerMemory(character)
 
 				task.wait(0.1)
@@ -89,6 +106,16 @@ function playerController:onCharacterRemoving()
 		connection:Disconnect()
 		characterConnections[key] = nil
 	end
+
+	local memoryThread = self.memoryThread
+	if memoryThread then
+		if coroutine.running() ~= memoryThread then
+			task.cancel(memoryThread)
+		end
+		self.memoryThread = nil
+	end
+
+	self.lastRoomKey = nil
 
 	if self.characterController then
 		self.characterController:destroy()
@@ -125,6 +152,8 @@ function playerController.new(player: Player)
 	self.connections = {}
 	self.characterConnections = {}
 	self.characterController = nil
+	self.memoryThread = nil
+	self.lastRoomKey = nil
 
 	task.defer(self.init, self)
 

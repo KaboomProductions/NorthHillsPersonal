@@ -18,6 +18,7 @@ type EffectState = {
 		[string]: Instance,
 	}?,
 	connections: { RBXScriptConnection }?,
+	fadeThread: thread?,
 }
 
 function statusEffectsController:preload()
@@ -47,22 +48,43 @@ function statusEffectsController:getOrCreateState(effectId: string): EffectState
 	return state
 end
 
-function statusEffectsController:teardownEffect(effectId: string)
+local function cancelFade(state: EffectState)
+	if state.fadeThread then
+		task.cancel(state.fadeThread)
+		state.fadeThread = nil
+	end
+end
+
+local function disconnectEffect(state: EffectState)
+	if state.connections then
+		for _, connection in state.connections do
+			connection:Disconnect()
+		end
+		state.connections = nil
+	end
+end
+
+function statusEffectsController:teardownEffect(effectId: string, shouldRunDestroy: boolean?)
 	local state = self.activeEffects[effectId]
 
 	if not state then
 		return
 	end
 
-	if state.connections then
-		for _, connection in state.connections do
-			connection:Disconnect()
-		end
+	state.generation = state.generation + 1
+	cancelFade(state)
+	disconnectEffect(state)
 
-		state.connections = nil
+	local definition = self.definitions[effectId]
+	if shouldRunDestroy and state.instances and definition then
+		local didDestroy, destroyError = pcall(definition.destroy, state.instances)
+		if not didDestroy then
+			warn(("[StatusEffects] Destroy failed for %s: %s"):format(effectId, tostring(destroyError)))
+		end
 	end
 
 	state.instances = nil
+	self.activeEffects[effectId] = nil
 end
 
 function statusEffectsController:onApply(payload)
@@ -74,6 +96,13 @@ function statusEffectsController:onApply(payload)
 
 	local state = self:getOrCreateState(payload.effectId)
 	state.generation = state.generation + 1
+
+	local isFadingOut = state.fadeThread ~= nil
+	if isFadingOut then
+		cancelFade(state)
+		disconnectEffect(state)
+		state.instances = nil
+	end
 
 	if not state.instances then
 		local instances, connections = definition.build()
@@ -93,16 +122,19 @@ function statusEffectsController:onRemove(payload)
 	state.generation = state.generation + 1
 	local latestGeneration = state.generation
 
+	cancelFade(state)
+
 	if state.instances then
 		definition.destroy(state.instances)
 	end
 
-	task.delay(definition.endDuration or 1, function()
+	state.fadeThread = task.delay(definition.endDuration or 1, function()
+		state.fadeThread = nil
 		if state.generation ~= latestGeneration then
 			return
 		end
 
-		self:teardownEffect(payload.effectId)
+		self:teardownEffect(payload.effectId, false)
 	end)
 end
 
@@ -135,7 +167,7 @@ function statusEffectsController:destroy()
 	end
 
 	for effectId in self.activeEffects do
-		self:teardownEffect(effectId)
+		self:teardownEffect(effectId, true)
 	end
 
 	table.clear(self.activeEffects)

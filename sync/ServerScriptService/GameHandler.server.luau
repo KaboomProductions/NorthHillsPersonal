@@ -16,6 +16,7 @@ local eventsController = require(serverScriptService.Controllers.Events)
 local statusEffectsController = require(serverScriptService.Controllers.StatusEffects)
 local playerControllerModule = require(serverScriptService.Controllers.Player)
 local projectilesController = require(serverScriptService.Controllers.Projectiles)
+local starterItemsController = require(serverScriptService.Controllers.StarterItems)
 local propSpawner = require(serverScriptService.Systems.PropSpawner)
 local inventorySystemModule = require(serverScriptService.Systems.Inventory)
 local inventorySystem = inventorySystemModule.new()
@@ -81,6 +82,7 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 	playerControllersByUserId[userId] = playerControllerModule.new(player)
+	starterItemsController.onPlayerAdded(player)
 end
 
 local function onPlayerRemoving(player: Player)
@@ -92,6 +94,7 @@ local function onPlayerRemoving(player: Player)
 		playerControllersByUserId[userId] = nil
 	end
 
+	starterItemsController.onPlayerRemoving(player)
 	inventorySystem:unloadForPlayer(player)
 	playerData.release(player)
 end
@@ -101,6 +104,7 @@ generateBuildingMaps()
 eventsController.init()
 statusEffectsController.init()
 projectilesController.init()
+starterItemsController.init(inventorySystem)
 
 --// Spawned props must exist before the interactables system scans tagged instances.
 propSpawner.spawnPlaceholderProps()

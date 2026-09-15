@@ -224,7 +224,17 @@ function meleeController:createHitbox()
 	self.currentHitbox = newHitbox
 end
 
+local function cancelScheduledThread(scheduledThread: thread?)
+	if scheduledThread == nil or coroutine.running() == scheduledThread then
+		return
+	end
+	if coroutine.status(scheduledThread) ~= "dead" then
+		task.cancel(scheduledThread)
+	end
+end
+
 function meleeController:cancelSwing()
+	self.swingGeneration = (self.swingGeneration or 0) + 1
 	self.trailEffect.Enabled = false
 
 	if self.connections.hitboxTouched then
@@ -237,24 +247,30 @@ function meleeController:cancelSwing()
 		self.currentHitbox = nil
 	end
 
-	if self.swingThread then
-		if coroutine.status(self.swingThread) == "running" then
-			coroutine.close(self.swingThread)
-		end
-
-		self.swingThread = nil
-	end
+	--// task.delay handles are suspended rather than running, so a status check alone would never cancel them.
+	cancelScheduledThread(self.swingThread)
+	self.swingThread = nil
+	cancelScheduledThread(self.swingEndThread)
+	self.swingEndThread = nil
 end
 
 function meleeController:registerSwing(isHeavySwing: boolean)
+	self:cancelSwing()
+	local swingGeneration = self.swingGeneration
+
 	self.trailEffect.Enabled = true
 	self:playSound(self.sounds and self.sounds:FindFirstChild("Swing"), math.random(900, 1100) / 1000)
 
 	self.swingThread = task.delay(self.meleeConfig.hitboxDelayTime, function()
+		self.swingThread = nil
+		if self.swingGeneration ~= swingGeneration or getmetatable(self) == nil then
+			return
+		end
+
 		self:createHitbox()
 
 		self.connections.hitboxTouched = self.currentHitbox.Touched:Connect(function(hit: BasePart, humanoid: Humanoid)
-			if not hit:IsDescendantOf(entities) then
+			if self.swingGeneration ~= swingGeneration or not hit:IsDescendantOf(entities) then
 				return
 			end
 
@@ -263,8 +279,9 @@ function meleeController:registerSwing(isHeavySwing: boolean)
 			end
 		end)
 
-		task.delay(self.meleeConfig.swingLastingTime, function()
-			if self.cancelSwing then
+		self.swingEndThread = task.delay(self.meleeConfig.swingLastingTime, function()
+			self.swingEndThread = nil
+			if self.swingGeneration == swingGeneration and self.cancelSwing then
 				self:cancelSwing()
 			end
 		end)
@@ -296,6 +313,9 @@ function meleeController.new(player: Player, character: Model, tool: Tool, melee
 	self.meleeConfig = meleeConfig
 	self.connections = {}
 	self.chargeTimerId = 0
+	self.swingGeneration = 0
+	self.swingThread = nil
+	self.swingEndThread = nil
 
 	self:init()
 
@@ -342,7 +362,7 @@ function meleeController:activate()
 end
 
 function meleeController:deactivate(deactivationDetails: { chargeDepleted: boolean? }?)
-	deactivationDetails = deactivationDetails or {}
+	local isChargeDepleted = deactivationDetails ~= nil and deactivationDetails.chargeDepleted == true
 
 	if not self.isActivated or self.player:GetAttribute("MeleeCooldown") or not self.isCharging then
 		return
@@ -357,14 +377,14 @@ function meleeController:deactivate(deactivationDetails: { chargeDepleted: boole
 	local chargeAlpha = chargeSnapshot.chargeAlpha
 	local canHeavySwing = chargeAlpha > (self.meleeConfig.heavySwingThreshold or 0.75)
 
-	if not deactivationDetails.chargeDepleted then
+	if not isChargeDepleted then
 		self:registerSwing(canHeavySwing)
 	end
 
 	self.mainRemote:FireClient(self.player, "deactivate", {
 		isServerReplication = true,
 		isHeavy = canHeavySwing,
-		chargeDepleted = deactivationDetails.chargeDepleted,
+		chargeDepleted = isChargeDepleted,
 		chargeAlpha = chargeAlpha,
 	})
 
@@ -411,6 +431,7 @@ function meleeController:unequip()
 	self.isActivated = false
 
 	self:cleanupCharging()
+	self:cancelSwing()
 	self:playSound(self.sounds and self.sounds:FindFirstChild("Unequip"))
 end
 

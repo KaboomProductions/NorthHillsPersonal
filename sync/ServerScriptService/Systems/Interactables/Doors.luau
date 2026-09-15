@@ -35,15 +35,46 @@ function doorsMainController:preload()
 	end
 end
 
+function doorsMainController:canPlayerActuate(player: Player, wantsToOpen: boolean): (boolean, BasePart?)
+	local doorInstance = self.instance
+	local doorAttributes = self.attributes
+
+	if self.mainController == nil or doorAttributes == nil or doorInstance.Parent == nil then
+		return false, nil
+	end
+
+	if wantsToOpen and doorAttributes.Locked == true then
+		return false, nil
+	end
+
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if character == nil or humanoid == nil or humanoid.Health <= 0 then
+		return false, nil
+	end
+
+	local rootPart = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
+	if rootPart == nil or not rootPart:IsA("BasePart") then
+		return false, nil
+	end
+
+	local maximumDistanceStuds = self.prompt.MaxActivationDistance + 8
+	local distanceStuds = (rootPart.Position - doorInstance:GetPivot().Position).Magnitude
+	if distanceStuds > maximumDistanceStuds then
+		return false, nil
+	end
+
+	return true, rootPart
+end
+
 function doorsMainController:init()
 	self:preload()
 
 	self.connections.promptActivated = self.prompt.Triggered:Connect(function(player: Player)
-		local character = player.Character
-		local rootPart = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
+		local newState = not self.attributes.Open
+		local canActuate, rootPart = self:canPlayerActuate(player, newState)
 
-		if rootPart ~= nil then
-			local newState = not self.attributes.Open
+		if canActuate and rootPart ~= nil then
 			self:setState(rootPart, newState)
 
 			self.instance:SetAttribute("Open", newState)

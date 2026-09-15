@@ -1,18 +1,25 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local ServerStorage = game:GetService("ServerStorage")
 
-local GROUP_ID = 867384979 -- replace with your group ID
-local MIN_RANK = 15 -- minimum rank allowed to playtest
+local groupMembership = require(ServerStorage.ServerUtilities.GroupMembership)
 
-local function isAllowed(player)
-	local rank = player:GetRankInGroup(GROUP_ID)
-	return rank >= MIN_RANK
-end
+local minimumPlaytestRank = 15
 
 Players.PlayerAdded:Connect(function(player)
-	task.wait(1)
+	if RunService:IsStudio() then
+		return
+	end
 
-	if not isAllowed(player) and not RunService:IsStudio() then
+	local groupRank = groupMembership.getRank(player)
+	if player.Parent ~= Players then
+		return
+	end
+
+	--// An unverifiable rank must not admit the player.
+	if groupRank == nil then
+		player:Kick("Could not verify your group rank — please rejoin.")
+	elseif groupRank < minimumPlaytestRank then
 		player:Kick("You are not whitelisted.")
 	end
 end)

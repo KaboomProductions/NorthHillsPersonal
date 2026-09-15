@@ -94,8 +94,14 @@ function Service.new(): ServiceType
 	self.hydrator = hydrator.new(self.factory, self.persistence)
 	self.toolHost = controllerHost.new()
 	self.replica = inventoryReplica
-	self.pendingThrows =
-		pendingThrows.new(self, self.factory, self.projectileCosmetics, self.toolHost, projectilesController)
+	self.pendingThrows = pendingThrows.new(
+		self,
+		self.factory,
+		self.projectileCosmetics,
+		self.toolHost,
+		projectilesController,
+		self.worldItems
+	)
 	self.grants = grant.new(self, self.factory, self.placement)
 	self.worldItems:adoptExisting()
 	self.gateway = gateway.new(self, self.requestRemote)
@@ -204,32 +210,32 @@ function Service.commit(
 ): ()
 	local state = assert(self.states[player], "Inventory player is not loaded")
 	mutation.publish(function()
-	self:rebuildIndex(state)
-	if not self.persistence:write(player, state) then
-		error(string.format("[Inventory] Persistence is not ready for %s", player.Name))
-	end
-	if state.replica then
-		for _, change in ipairs(changes) do
-			local descriptor = if change.item then itemUtils.makeDescriptor(change.item) else nil
-			state.replica:setSlot(change.zone, change.index, descriptor :: protocol.ItemDescriptor?)
+		self:rebuildIndex(state)
+		if not self.persistence:write(player, state) then
+			error(string.format("[Inventory] Persistence is not ready for %s", player.Name))
 		end
-		if extra and extra.materialChanges then
-			for materialType, count in pairs(extra.materialChanges) do
-				state.replica:setMaterial(materialType, count)
+		if state.replica then
+			for _, change in ipairs(changes) do
+				local descriptor = if change.item then itemUtils.makeDescriptor(change.item) else nil
+				state.replica:setSlot(change.zone, change.index, descriptor :: protocol.ItemDescriptor?)
+			end
+			if extra and extra.materialChanges then
+				for materialType, count in pairs(extra.materialChanges) do
+					state.replica:setMaterial(materialType, count)
+				end
+			end
+			if extra and typeof(extra.storageCapacity) == "number" then
+				state.replica:setCapacity(extra.storageCapacity :: number)
+			end
+			if extra and extra.clearCurrentSlot == true then
+				state.replica:setCurrentSlot(nil)
+			elseif extra then
+				local currentSlot = extra.currentSlot
+				if typeof(currentSlot) == "number" then
+					state.replica:setCurrentSlot(currentSlot :: number?)
+				end
 			end
 		end
-		if extra and typeof(extra.storageCapacity) == "number" then
-			state.replica:setCapacity(extra.storageCapacity :: number)
-		end
-		if extra and extra.clearCurrentSlot == true then
-			state.replica:setCurrentSlot(nil)
-		elseif extra then
-			local currentSlot = extra.currentSlot
-			if typeof(currentSlot) == "number" then
-				state.replica:setCurrentSlot(currentSlot :: number?)
-			end
-		end
-	end
 	end)
 end
 

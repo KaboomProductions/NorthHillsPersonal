@@ -82,10 +82,13 @@ end
 function doorBashingController:isBashValid(door: any)
 	local instance = door.instance
 	local mainPivot = instance:GetPivot()
-	local isOpen = door.attributes.Open
-	local isLocked = door.attributes.Locked
 
-	if isOpen or isLocked == true then
+	if door.attributes.Open then
+		return false
+	end
+
+	local canBash = door:canPlayerActuate(self.player, true)
+	if not canBash then
 		return false
 	end
 

@@ -1,8 +1,16 @@
 local players = game:GetService("Players")
 local collectionService = game:GetService("CollectionService")
 local replicatedStorage = game:GetService("ReplicatedStorage")
+local runService = game:GetService("RunService")
+local serverStorage = game:GetService("ServerStorage")
+
+--// Studio-only test fixture; it must never bind gameplay remotes in a published place.
+if not runService:IsStudio() then
+	return
+end
 
 local networking = require(replicatedStorage.Communication.Networking)
+local remoteGuard = require(serverStorage.ServerUtilities.RemoteGuard)
 
 local kickMinInterval = 1.4
 local kickMaxInterval = 3.5
@@ -72,7 +80,6 @@ local function startSession(player: Player, door: Instance?)
 
 	networking.events.startDoorQte:FireClient(player, door :: any)
 
-	activeSessionsByPlayer[player] = true :: any
 	activeSessionsByPlayer[player] = task.spawn(runKickLoop, player)
 end
 
@@ -83,25 +90,41 @@ local function endSession(player: Player)
 	end
 
 	activeSessionsByPlayer[player] = nil
-	task.cancel(sessionThread)
+	if coroutine.running() ~= sessionThread then
+		task.cancel(sessionThread)
+	end
 	networking.events.endDoorQte:FireClient(player)
 end
 
 networking.events.doorQteFailed.OnServerEvent:Connect(function(player: Player)
-	if not activeSessionsByPlayer[player] then
+	if not remoteGuard.allow(player, "doorQteFailed", 4, 1) then
+		return
+	end
+
+	local sessionThread = activeSessionsByPlayer[player]
+	if not sessionThread then
 		return
 	end
 
 	activeSessionsByPlayer[player] = nil
+	task.cancel(sessionThread)
 	print(`{player.Name} failed the QTE`)
 end)
 
 players.PlayerRemoving:Connect(function(player: Player)
+	local sessionThread = activeSessionsByPlayer[player]
 	activeSessionsByPlayer[player] = nil
+	if sessionThread then
+		task.cancel(sessionThread)
+	end
 end)
 
 local function bindPrompt(prompt: ProximityPrompt)
 	prompt.Triggered:Connect(function(player: Player)
+		if not remoteGuard.allow(player, "doorQtePrompt", 4, 1) then
+			return
+		end
+
 		if activeSessionsByPlayer[player] then
 			endSession(player)
 		else

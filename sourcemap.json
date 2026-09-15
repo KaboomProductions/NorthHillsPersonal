@@ -4697,6 +4697,14 @@
                       ]
                     }
                   ]
+                },
+                {
+                  "name": "Loadouts",
+                  "className": "ModuleScript",
+                  "guid": "1502128",
+                  "filePaths": [
+                    "sync/ReplicatedStorage/SharedAssets/Dictionaries/Loadouts.luau"
+                  ]
                 }
               ]
             },
@@ -9392,6 +9400,14 @@
                   ]
                 }
               ]
+            },
+            {
+              "name": "StarterItems",
+              "className": "ModuleScript",
+              "guid": "1502208",
+              "filePaths": [
+                "sync/ServerScriptService/Controllers/StarterItems.luau"
+              ]
             }
           ]
         },
@@ -9925,14 +9941,6 @@
                   "guid": "17568",
                   "children": [
                     {
-                      "name": "Hydrator",
-                      "className": "ModuleScript",
-                      "guid": "35052",
-                      "filePaths": [
-                        "sync/ServerScriptService/Systems/Inventory/Persistence/Hydrator.luau"
-                      ]
-                    },
-                    {
                       "name": "InventoryCodec",
                       "className": "ModuleScript",
                       "guid": "35053",
@@ -9946,6 +9954,14 @@
                       "guid": "35054",
                       "filePaths": [
                         "sync/ServerScriptService/Systems/Inventory/Persistence/PersistenceStore.luau"
+                      ]
+                    },
+                    {
+                      "name": "Hydrator",
+                      "className": "ModuleScript",
+                      "guid": "1502156",
+                      "filePaths": [
+                        "sync/ServerScriptService/Systems/Inventory/Persistence/Hydrator.luau"
                       ]
                     }
                   ]
@@ -16954,6 +16970,14 @@
               "guid": "35172",
               "filePaths": [
                 "sync/ServerStorage/ServerUtilities/SoundEvents.luau"
+              ]
+            },
+            {
+              "name": "GroupMembership",
+              "className": "ModuleScript",
+              "guid": "1502188",
+              "filePaths": [
+                "sync/ServerStorage/ServerUtilities/GroupMembership.luau"
               ]
             }
           ]

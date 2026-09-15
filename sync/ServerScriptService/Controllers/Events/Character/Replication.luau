@@ -130,6 +130,14 @@ function replicationController.init()
 
 	players.PlayerRemoving:Connect(function(player: Player)
 		statesByPlayerCache[player] = nil
+		eventBucketsByPlayer[player] = nil
+	end)
+
+	--// Client sequence counters restart with each character, so the cached counter must reset at respawn.
+	players.PlayerAdded:Connect(function(player: Player)
+		player.CharacterAdded:Connect(function()
+			statesByPlayerCache[player] = nil
+		end)
 	end)
 end
 

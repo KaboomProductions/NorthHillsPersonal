@@ -63,14 +63,38 @@ function inventoryRequests:_invoke(payload: protocol.ActionPayload): protocol.In
 		self.inFlight[action] = true
 	end
 	local generation = self.generation
-	local ok, response = pcall(remote.InvokeServer, remote, payload)
+	local hasSettled = false
+	local didTimeOut = false
+	local didInvokeSucceed: boolean, serverResponse: unknown = false, nil
+	local waitingThread = coroutine.running()
+	task.spawn(function()
+		local invokeSucceeded, invokeResponse = pcall(remote.InvokeServer, remote, payload)
+		if hasSettled then
+			return
+		end
+		hasSettled = true
+		didInvokeSucceed, serverResponse = invokeSucceeded, invokeResponse
+		task.spawn(waitingThread)
+	end)
+	local timeoutThread = task.delay(protocol.Limits.remoteWaitSeconds, function()
+		if hasSettled then
+			return
+		end
+		hasSettled = true
+		didTimeOut = true
+		task.spawn(waitingThread)
+	end)
+	coroutine.yield()
+	if not didTimeOut then
+		task.cancel(timeoutThread)
+	end
 	if not isSequencedSelectionAction and generation == self.generation then
 		self.inFlight[action] = nil
 	end
-	if not ok or typeof(response) ~= "table" or generation ~= self.generation then
+	if not didInvokeSucceed or typeof(serverResponse) ~= "table" or generation ~= self.generation then
 		return nil
 	end
-	return response :: protocol.InventoryResponse
+	return serverResponse :: protocol.InventoryResponse
 end
 
 function inventoryRequests:equip(slotNumber: number, intentSequence: number): protocol.InventoryResponse?

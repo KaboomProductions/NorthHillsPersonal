@@ -74,6 +74,20 @@ function fuseboxController:destroy()
 	end
 
 	table.clear(self.connections)
+
+	local subClassInteractable = self.subClassInteractable
+	self.subClassInteractable = nil
+	if subClassInteractable ~= nil and type(subClassInteractable.destroy) == "function" then
+		local didDestroy, destroyError = pcall(subClassInteractable.destroy, subClassInteractable)
+		if not didDestroy then
+			warn(
+				("[Fusebox] Subclass destroy failed for %s: %s"):format(
+					self.instance:GetFullName(),
+					tostring(destroyError)
+				)
+			)
+		end
+	end
 end
 
 return fuseboxController

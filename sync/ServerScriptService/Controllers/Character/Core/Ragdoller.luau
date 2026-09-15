@@ -41,24 +41,26 @@ function ragdollerController:init()
 
 		self.character:SetAttribute("Ragdolled", true)
 
-		task.spawn(function()
-			local newTimer
+		local character = self.character
+		self.timerThread = task.spawn(function()
+			local newTimer = 0
 
 			repeat
 				local _, deltaTime = runService.Stepped:Wait()
 
-				if self.character then
-					newTimer = self.character:GetAttribute("RagdollTimer") - deltaTime
-					self.character:SetAttribute("RagdollTimer", newTimer)
+				if getmetatable(self) == nil or character.Parent == nil then
+					return
 				end
-			until newTimer <= 0 or not self.character or not self.character:GetAttribute("Ragdolled")
+
+				newTimer = (character:GetAttribute("RagdollTimer") or 0) - deltaTime
+				character:SetAttribute("RagdollTimer", newTimer)
+			until newTimer <= 0 or not character:GetAttribute("Ragdolled")
 
 			self._countingDown = false
+			self.timerThread = nil
 
-			if self.character then
-				self.character:SetAttribute("Ragdolled", false)
-				self.character:SetAttribute("RagdollTimer", 0)
-			end
+			character:SetAttribute("Ragdolled", false)
+			character:SetAttribute("RagdollTimer", 0)
 		end)
 	end)
 
@@ -92,6 +94,21 @@ function ragdollerController:destroy()
 
 	for _, connection in pairs(connections) do
 		connection:Disconnect()
+	end
+
+	local timerThread = self.timerThread
+	if timerThread and coroutine.running() ~= timerThread then
+		task.cancel(timerThread)
+	end
+	self.timerThread = nil
+
+	local mainRagdoller = self.mainRagdoller
+	if mainRagdoller then
+		local didDestroy, destroyError = pcall(mainRagdoller.destroy, mainRagdoller)
+		if not didDestroy then
+			warn("[Ragdoller] Ragdoll destroy failed:", destroyError)
+		end
+		self.mainRagdoller = nil
 	end
 
 	table.clear(connections)

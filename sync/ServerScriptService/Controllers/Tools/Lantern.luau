@@ -146,9 +146,12 @@ function lanternController:init()
 	self.isEquipping = false
 
 	self.connections.onMainEvent = self.mainRemote.OnServerEvent:Connect(function(eventPlayer: Player, event: string)
-		if eventPlayer ~= self.player or typeof(event) ~= "string"
+		if
+			eventPlayer ~= self.player
+			or typeof(event) ~= "string"
 			or (event ~= "activate" and event ~= "activateSilent")
-			or not remoteGuard.allow(eventPlayer, "lightToggle", 8, 1) then
+			or not remoteGuard.allow(eventPlayer, "lightToggle", 8, 1)
+		then
 			return
 		end
 
@@ -156,11 +159,17 @@ function lanternController:init()
 	end)
 end
 
-function lanternController:registerToggle()
+function lanternController:cancelToggleTweens()
 	for _, tween in self.toggleTweens do
 		tween:Cancel()
-		tween = nil
+		tween:Destroy()
 	end
+
+	table.clear(self.toggleTweens)
+end
+
+function lanternController:registerToggle()
+	self:cancelToggleTweens()
 
 	self:playSound(self.tool:GetAttribute(toolAttributes.toggled) and lanternSounds.On or lanternSounds.Off)
 
@@ -300,6 +309,16 @@ function lanternController:destroy()
 	self.tool:SetAttribute(toolAttributes.equipped, false)
 	self.tool:SetAttribute(toolAttributes.toggled, false)
 	self:registerToggle()
+
+	--// The final off-tween is still playing; releasing the handles immediately would freeze the lights on.
+	local finishingTweens = self.toggleTweens
+	self.toggleTweens = {}
+	task.delay(0.2, function()
+		for _, finishingTween in finishingTweens do
+			finishingTween:Cancel()
+			finishingTween:Destroy()
+		end
+	end)
 
 	if self.character ~= nil then
 		self:cleanupRigArtifacts()

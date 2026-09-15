@@ -30,6 +30,14 @@ function towerLightsController:preload()
 	end)
 end
 
+local function playTrackedTween(self, trackedTween: Tween)
+	self.activeTweens[trackedTween] = true
+	trackedTween.Completed:Once(function()
+		self.activeTweens[trackedTween] = nil
+	end)
+	trackedTween:Play()
+end
+
 function towerLightsController:handleLight(lightObject: Instance)
 	local stateValues = self.__vars
 	local isToggled = stateValues.isToggled
@@ -55,41 +63,53 @@ function towerLightsController:handleLight(lightObject: Instance)
 
 	for _, lightInstance in cachedLights do
 		if lightInstance:IsA("Light") then
-			local brightnessTween = tweenService:Create(lightInstance, tweenInfo, {
-				Brightness = desiredBrightness,
-			})
-			brightnessTween:Play()
+			playTrackedTween(
+				self,
+				tweenService:Create(lightInstance, tweenInfo, {
+					Brightness = desiredBrightness,
+				})
+			)
 		elseif lightInstance:IsA("Beam") then
 			lightInstance.Enabled = true
 
+			local previousMultiplier = lightInstance:FindFirstChild("TransparencyMultiplier")
+			if previousMultiplier then
+				previousMultiplier:Destroy()
+			end
+
 			local transparencyMultiplier = Instance.new("NumberValue")
-			transparencyMultiplier.Parent = lightInstance
+			transparencyMultiplier.Name = "TransparencyMultiplier"
 			transparencyMultiplier.Value = isToggled and 1 or 0
+			transparencyMultiplier.Parent = lightInstance
 
 			local multiplierTween = tweenService:Create(transparencyMultiplier, tweenInfo, {
 				Value = isToggled and 0 or 1,
 			})
 
-			multiplierTween:Play()
-			transparencyMultiplier:GetPropertyChangedSignal("Value"):Connect(function()
-				lightInstance.Transparency = NumberSequence.new({
-					NumberSequenceKeypoint.new(0, 0.762 + transparencyMultiplier.Value),
-					NumberSequenceKeypoint.new(0.542, 0.313 + transparencyMultiplier.Value),
-					NumberSequenceKeypoint.new(0.94, 0 + transparencyMultiplier.Value),
-					NumberSequenceKeypoint.new(1, 1),
-				})
-			end)
+			local multiplierChangedConnection = transparencyMultiplier
+				:GetPropertyChangedSignal("Value")
+				:Connect(function()
+					lightInstance.Transparency = NumberSequence.new({
+						NumberSequenceKeypoint.new(0, 0.762 + transparencyMultiplier.Value),
+						NumberSequenceKeypoint.new(0.542, 0.313 + transparencyMultiplier.Value),
+						NumberSequenceKeypoint.new(0.94, 0 + transparencyMultiplier.Value),
+						NumberSequenceKeypoint.new(1, 1),
+					})
+				end)
 
 			multiplierTween.Completed:Once(function()
+				multiplierChangedConnection:Disconnect()
 				transparencyMultiplier:Destroy()
 			end)
+			playTrackedTween(self, multiplierTween)
 		end
 	end
 end
 
 function towerLightsController:toggle(forcedState: boolean?)
 	local stateValues = self.__vars
-	self.instance:SetAttribute("Toggled", forcedState or not stateValues.isToggled or false)
+	local nextState = if forcedState ~= nil then forcedState else not stateValues.isToggled
+	self.instance:SetAttribute("Toggled", nextState)
 end
 
 function towerLightsController.new(instance: Instance)
@@ -98,6 +118,7 @@ function towerLightsController.new(instance: Instance)
 	self.instance = instance
 	self.connections = {}
 	self.cachedLightsByObject = {}
+	self.activeTweens = {}
 	self.__vars = table.clone(towerLightsController.__vars)
 
 	self:preload()
@@ -106,11 +127,22 @@ function towerLightsController.new(instance: Instance)
 end
 
 function towerLightsController:destroy()
+	if getmetatable(self) == nil then
+		return
+	end
+
 	for _, connection in pairs(self.connections) do
 		connection:Disconnect()
 	end
 
+	for activeTween in pairs(self.activeTweens) do
+		activeTween:Cancel()
+		activeTween:Destroy()
+	end
+
 	table.clear(self.connections)
+	table.clear(self.activeTweens)
+	table.clear(self.cachedLightsByObject)
 	setmetatable(self, nil)
 end
 

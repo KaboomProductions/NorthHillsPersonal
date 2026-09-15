@@ -50,6 +50,8 @@ function spitPuddleController:preload()
 
 	local newPuddle = self.isDryState and puddlePrefabs.Fire or puddlePrefabs.Acid
 	newPuddle = newPuddle:Clone()
+	--// Own the clone before the raycast can fail so destroy() always removes it.
+	self.puddle = newPuddle
 	newPuddle.Parent = other
 
 	local newSplash = self.isDryState and spitSplashParticles.Fire or spitSplashParticles.Acid
@@ -70,7 +72,7 @@ function spitPuddleController:preload()
 		newPuddle.Position = raycastResult.Position
 	else
 		self:destroy()
-		return
+		return false
 	end
 
 	audioUtilities.playSound({
@@ -78,7 +80,7 @@ function spitPuddleController:preload()
 		parent = newPuddle,
 	})
 
-	self.puddle = newPuddle
+	return true
 end
 
 function spitPuddleController:startLightFlicker()
@@ -100,7 +102,7 @@ function spitPuddleController:startLightFlicker()
 		return
 	end
 
-	task.spawn(function()
+	self.threads.flicker = task.spawn(function()
 		while self.active do
 			local now = os.clock()
 
@@ -137,55 +139,61 @@ function spitPuddleController:damageTick()
 		statusEffectsController.apply(character, self.isDryState and "Burning" or "Corroding")
 	end
 
-	task.delay(self.__vars.tickRate, function()
+	self.threads.damage = task.delay(self.__vars.tickRate, function()
+		self.threads.damage = nil
 		self:damageTick()
 	end)
 end
 
 function spitPuddleController:initialize()
-	self:preload()
+	if not self:preload() or self.destroyed then
+		return
+	end
 
-	if self.puddle ~= nil then
-		self.puddleDescendants = self.puddle:GetDescendants()
-		self.currentLifetime = 0
-		self.cooldown = self.cooldown or 10
-		self.active = true
+	self.puddleDescendants = self.puddle:GetDescendants()
+	self.currentLifetime = 0
+	self.cooldown = self.cooldown or 10
+	self.active = true
 
-		self:damageTick()
-		self:startLightFlicker()
+	self:damageTick()
+	self:startLightFlicker()
 
-		task.delay(self.cooldown, function()
-			self.active = false
+	self.threads.cooldown = task.delay(self.cooldown, function()
+		self.threads.cooldown = nil
+		if self.destroyed then
+			return
+		end
+		self.active = false
 
-			for _, instance: ParticleEmitter | Light | Sound in self.puddleDescendants do
-				local fadeTween = nil
+		for _, instance: ParticleEmitter | Light | Sound in self.puddleDescendants do
+			local fadeTween = nil
 
-				if instance:IsA("ParticleEmitter") then
-					if instance.Lifetime.Max > self.currentLifetime then
-						self.currentLifetime = instance.Lifetime.Max
-					end
-
-					instance.Enabled = false
-				elseif instance:IsA("Light") then
-					fadeTween = tweenService:Create(instance, TweenInfo.new(2), {
-						Brightness = 0,
-					})
-				elseif instance:IsA("Sound") then
-					fadeTween = tweenService:Create(instance, TweenInfo.new(2), {
-						Volume = 0,
-					})
+			if instance:IsA("ParticleEmitter") then
+				if instance.Lifetime.Max > self.currentLifetime then
+					self.currentLifetime = instance.Lifetime.Max
 				end
 
-				if fadeTween then
-					fadeTween:Play()
-				end
+				instance.Enabled = false
+			elseif instance:IsA("Light") then
+				fadeTween = tweenService:Create(instance, TweenInfo.new(2), {
+					Brightness = 0,
+				})
+			elseif instance:IsA("Sound") then
+				fadeTween = tweenService:Create(instance, TweenInfo.new(2), {
+					Volume = 0,
+				})
 			end
 
-			task.delay(self.currentLifetime, function()
-				self.puddle:Destroy()
-			end)
+			if fadeTween then
+				fadeTween:Play()
+			end
+		end
+
+		self.threads.expire = task.delay(self.currentLifetime, function()
+			self.threads.expire = nil
+			self:destroy()
 		end)
-	end
+	end)
 end
 
 function spitPuddleController.new(origin)
@@ -193,6 +201,9 @@ function spitPuddleController.new(origin)
 	self.origin = origin
 	self.__vars = table.clone(spitPuddleController.__vars)
 	self.active = false
+	self.destroyed = false
+	self.puddle = nil
+	self.threads = {}
 
 	task.spawn(self.initialize, self)
 
@@ -200,10 +211,22 @@ function spitPuddleController.new(origin)
 end
 
 function spitPuddleController:destroy()
+	if self.destroyed then
+		return
+	end
+	self.destroyed = true
 	self.active = false
+
+	for threadName, ownedThread in self.threads do
+		if coroutine.running() ~= ownedThread and coroutine.status(ownedThread) ~= "dead" then
+			task.cancel(ownedThread)
+		end
+		self.threads[threadName] = nil
+	end
 
 	if self.puddle then
 		self.puddle:Destroy()
+		self.puddle = nil
 	end
 
 	setmetatable(self, nil)

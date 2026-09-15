@@ -7,7 +7,6 @@ local serverAssets = serverStorage.ServerAssets
 local gameFolder = workspace.Game
 local mapFolder = gameFolder.Map
 local propsFolderPreset = mapFolder.Props
-propsFolderPreset.Parent = serverAssets
 
 local sharedAssets = replicatedStorage.SharedAssets
 local cyclePhase = require(sharedAssets.CyclePhase)
@@ -39,6 +38,10 @@ local roundCycleSystem = {}
 roundCycleSystem.onPhaseStarted = {}
 roundCycleSystem.onTransitionStarted = {}
 roundCycleSystem.failSafeTimer = 30
+roundCycleSystem.loopGeneration = 0
+roundCycleSystem.roundId = 0
+
+local thunderStallLimitSeconds = 15
 
 local function sendToReadyPlayers(nextPhase: string)
 	local currentClimateName = climateStateValue.Value
@@ -73,13 +76,29 @@ function roundCycleSystem.getNextPhase(): string
 	return nightTimeValue.Value and cyclePhase.Day or cyclePhase.Night
 end
 
-function roundCycleSystem.publishCycleState()
-	local stateSnapshot = {
+function roundCycleSystem.buildSnapshot()
+	return {
 		isNight = nightTimeValue.Value,
 		isTransitioning = transitionStateValue.Value,
 		climateStateName = climateStateValue.Value,
 		cycleActive = cycleActiveValue.Value,
+		roundId = roundCycleSystem.roundId,
 	}
+end
+
+function roundCycleSystem.sendSnapshotTo(player: Player)
+	networking.events.cycleStateUpdate:FireClient(player, roundCycleSystem.buildSnapshot())
+
+	if transitionStateValue.Value then
+		networking.events.roundCycleTransition:FireClient(player, {
+			phaseString = roundCycleSystem.getNextPhase(),
+			climateStateName = climateStateValue.Value,
+		})
+	end
+end
+
+function roundCycleSystem.publishCycleState()
+	local stateSnapshot = roundCycleSystem.buildSnapshot()
 
 	for _, player in ipairs(players:GetPlayers()) do
 		if player:GetAttribute("RoundCycleEventsReady") then
@@ -88,18 +107,21 @@ function roundCycleSystem.publishCycleState()
 	end
 end
 
+--// Remaining time is derived from a deadline so scheduler stalls do not stretch the phase.
 function roundCycleSystem.countDown()
-	local thunderStallSeconds = 0
+	local phaseDeadline = os.clock() + remainingTimeValue.Value
+	local thunderStallStartedAt: number? = nil
 
 	repeat
 		task.wait(1)
 
-		remainingTimeValue.Value -= 1
+		remainingTimeValue.Value = math.max(math.ceil(phaseDeadline - os.clock()), 0)
 
 		if remainingTimeValue.Value <= 0 and climateStateValue:HasTag("ActiveThundering") then
-			thunderStallSeconds += 1
+			local stallStartedAt = thunderStallStartedAt or os.clock()
+			thunderStallStartedAt = stallStartedAt
 
-			if thunderStallSeconds >= 15 then
+			if os.clock() - stallStartedAt >= thunderStallLimitSeconds then
 				climateStateValue:RemoveTag("ActiveThundering")
 			end
 		end
@@ -138,7 +160,11 @@ function roundCycleSystem.startTransition()
 	transitionStateValue.Value = false
 
 	if not nightTimeValue.Value then
-		resultsController.updateForResults()
+		roundCycleSystem.roundId += 1
+		local didProcessResults, resultsError = pcall(resultsController.updateForResults, roundCycleSystem.roundId)
+		if not didProcessResults then
+			warn("[RoundCycle] Results processing failed:", resultsError)
+		end
 
 		task.wait(cycleConfig.resultDelayTime)
 	end
@@ -189,15 +215,23 @@ function roundCycleSystem.handleNewState()
 end
 
 function roundCycleSystem.startCycle()
+	if cycleActiveValue.Value then
+		return
+	end
+
+	roundCycleSystem.loopGeneration += 1
+	local loopGeneration = roundCycleSystem.loopGeneration
 	cycleActiveValue.Value = true
 
-	while cycleActiveValue.Value do
+	--// A stale loop from before stop/resume must exit instead of driving the cycle twice.
+	while cycleActiveValue.Value and loopGeneration == roundCycleSystem.loopGeneration do
 		roundCycleSystem.handleNewState()
 	end
 end
 
 function roundCycleSystem.stop()
 	cycleActiveValue.Value = false
+	roundCycleSystem.loopGeneration += 1
 end
 
 function roundCycleSystem.resume()
@@ -209,6 +243,10 @@ function roundCycleSystem.resume()
 end
 
 function roundCycleSystem.new()
+	if propsFolderPreset.Parent ~= serverAssets then
+		propsFolderPreset.Parent = serverAssets
+	end
+
 	for _, prop in propsFolderPreset:GetDescendants() do
 		if not prop:IsA("BasePart") then
 			continue
