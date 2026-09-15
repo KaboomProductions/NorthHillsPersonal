@@ -9,6 +9,7 @@ local types = require(script.Parent.Parent.Contracts)
 local playerState = require(script.Parent.Parent.State.PlayerState)
 local itemPlacement = require(script.Parent.Parent.Items.ItemPlacement)
 local itemIds = require(script.Parent.Parent.Items.ItemIds)
+local mutation = require(script.Parent.Parent.State.Mutation)
 
 export type Allocation = types.Allocation
 export type Change = types.AllocationChange
@@ -91,7 +92,7 @@ function allocator.allocate(state: State, item: Model, placement: Placement, sto
 		end
 	end
 
-	if remaining == 0 and item.Parent == nil then
+	if remaining == 0 and item.Parent == nil and not mutation.retire(item) then
 		itemIds.release(item)
 		item:Destroy()
 	end

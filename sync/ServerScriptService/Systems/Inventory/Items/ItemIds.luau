@@ -28,6 +28,10 @@ function itemIds.release(itemOrId: Instance | string)
 	end
 end
 
+function itemIds.restore(itemId: string)
+	reserved[itemId] = true
+end
+
 function itemIds.clear()
 	table.clear(reserved)
 end

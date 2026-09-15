@@ -81,6 +81,15 @@ function inventoryReplica.new(player: Player, state: State): Replica
 	return self
 end
 
+function inventoryReplica.sync(self: Replica, state: State): ()
+	local handle = replicaHandle(self)
+	handle:Set({ "hotbar" }, descriptorMap(state.hotbar))
+	handle:Set({ "storage" }, descriptorMap(state.storage))
+	handle:Set({ "materials" }, numberMap(state.materials))
+	handle:Set({ "storageCapacity" }, state.storageCapacity)
+	handle:Set({ "currentSlot" }, state.currentSlot)
+end
+
 function inventoryReplica.setSlot(
 	self: Replica,
 	zone: protocol.Zone,

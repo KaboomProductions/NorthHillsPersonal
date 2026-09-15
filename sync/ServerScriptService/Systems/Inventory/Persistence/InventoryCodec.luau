@@ -24,9 +24,8 @@ local function serializeZone(folder: Folder): { [string]: protocol.ItemDescripto
 			continue
 		end
 		local descriptor = itemUtils.makeDescriptor(child.Value)
-		if descriptor then
-			records[child.Name] = descriptor :: protocol.ItemDescriptor
-		end
+		assert(descriptor, "Cannot serialize invalid inventory item")
+		records[child.Name] = descriptor :: protocol.ItemDescriptor
 	end
 	return records
 end

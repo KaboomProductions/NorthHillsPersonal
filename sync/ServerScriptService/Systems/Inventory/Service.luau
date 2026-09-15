@@ -14,6 +14,7 @@ local playerData = require(serverScriptService.GameHandler.PlayerData)
 
 local playerState = require(script.Parent.State.PlayerState)
 local slotIndex = require(script.Parent.State.SlotIndex)
+local mutation = require(script.Parent.State.Mutation)
 local templates = require(script.Parent.Items.Templates)
 local itemFactory = require(script.Parent.Items.ItemFactory)
 local itemPlacement = require(script.Parent.Items.ItemPlacement)
@@ -47,7 +48,7 @@ type PlayerActionContext = {
 local Service = {}
 Service.__index = Service
 local singleton: ServiceType?
-local playerActionContexts: { [thread]: PlayerActionContext } = {}
+local playerActionContexts: { [thread]: PlayerActionContext } = setmetatable({}, { __mode = "k" })
 local playerActionGenerations: { [State]: number } = {}
 
 local function runWithPlayerActionContext(
@@ -174,7 +175,20 @@ function Service.withLock(self: ServiceType, player: Player, callback: types.Tra
 			end)
 		end
 	end
-	return state.queue:withLock(player, guardedCallback)
+	return state.queue:withLock(player, function()
+		local data = playerData.get(player)
+		if data == nil or self.states[player] ~= state or state.removing then
+			return protocol.failure(protocol.ResponseCodes.notReady)
+		end
+		local savedInventory = data.Inventory
+		return mutation.run(state, guardedCallback, function()
+			data.Inventory = savedInventory
+			self:rebuildIndex(state)
+			if state.replica then
+				state.replica:sync(state)
+			end
+		end)
+	end)
 end
 
 function Service.commit(
@@ -189,6 +203,7 @@ function Service.commit(
 	}?
 ): ()
 	local state = assert(self.states[player], "Inventory player is not loaded")
+	mutation.publish(function()
 	self:rebuildIndex(state)
 	if not self.persistence:write(player, state) then
 		error(string.format("[Inventory] Persistence is not ready for %s", player.Name))
@@ -215,6 +230,7 @@ function Service.commit(
 			end
 		end
 	end
+	end)
 end
 
 function Service.loadForPlayer(self: ServiceType, player: Player): boolean
@@ -259,6 +275,9 @@ function Service.loadForPlayer(self: ServiceType, player: Player): boolean
 		if humanoid == nil then
 			local candidate = character:WaitForChild("Humanoid", 5)
 			humanoid = if candidate and candidate:IsA("Humanoid") then candidate else nil
+		end
+		if self.states[player] ~= state or state.removing or player.Character ~= character then
+			return
 		end
 		if humanoid then
 			state.connections.humanoidDied = humanoid.Died:Connect(function()

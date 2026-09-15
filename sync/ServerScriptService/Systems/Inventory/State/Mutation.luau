@@ -8,7 +8,9 @@ type ItemSnapshot = {
 	attributes: { [string]: any },
 	tags: { string },
 	pivot: CFrame?,
+	parts: { [BasePart]: { boolean } },
 }
+
 type Scope = {
 	items: { [Instance]: ItemSnapshot },
 	created: { [Instance]: boolean },
@@ -23,10 +25,21 @@ local scopes: { [thread]: Scope } = {}
 
 function mutation.watch(item: Instance)
 	local scope = scopes[coroutine.running()]
+
 	if scope == nil or scope.items[item] or scope.created[item] then
 		return
 	end
+
+	local parts: { [BasePart]: { boolean } } = {}
+
+	for _, part in item:GetDescendants() do
+		if part:IsA("BasePart") then
+			parts[part] = { part.Anchored, part.CanCollide, part.CanQuery, part.Massless }
+		end
+	end
+
 	scope.items[item] = {
+		parts = parts,
 		parent = item.Parent,
 		attributes = item:GetAttributes(),
 		tags = item:GetTags(),
@@ -83,27 +96,37 @@ local function restoreItems(scope: Scope)
 	for item in scope.created do
 		destroyItem(item)
 	end
+
 	for item, snapshot in scope.items do
 		for name in item:GetAttributes() do
 			if snapshot.attributes[name] == nil then
 				item:SetAttribute(name, nil)
 			end
 		end
+
 		for name, value in snapshot.attributes do
 			item:SetAttribute(name, value)
 		end
+
 		for _, tag in item:GetTags() do
 			if not table.find(snapshot.tags, tag) then
 				item:RemoveTag(tag)
 			end
 		end
+
 		for _, tag in snapshot.tags do
 			item:AddTag(tag)
 		end
+
+		for part, flags in snapshot.parts do
+			part.Anchored, part.CanCollide, part.CanQuery, part.Massless = flags[1], flags[2], flags[3], flags[4]
+		end
+
 		item.Parent = snapshot.parent
 		if snapshot.pivot and item:IsA("Model") then
 			item:PivotTo(snapshot.pivot)
 		end
+
 		local itemId = snapshot.attributes.ItemId
 		if typeof(itemId) == "string" then
 			itemIds.restore(itemId)
@@ -111,8 +134,6 @@ local function restoreItems(scope: Scope)
 	end
 end
 
--- Inventory critical sections must not yield. Assets/waits are prepared before entering.
--- Keep original Models alive until publication succeeds so failure can restore ownership.
 function mutation.run(state: types.State, callback: types.TransactionCallback, restorePublication: () -> ()): ...unknown
 	local slots: { [ObjectValue]: Instance? } = {}
 	local originalSlots: { [Instance]: boolean } = {}
@@ -133,27 +154,33 @@ function mutation.run(state: types.State, callback: types.TransactionCallback, r
 				end
 			end
 		end
-		local result = table.pack(callback())
+
+		local result: { [number]: unknown } & { n: number } = table.pack(callback())
 		local response = result[1]
-		if typeof(response) == "table" and response.ok == false then
+		if typeof(response) == "table" and (response :: any).ok == false then
 			return false, result
 		end
+
 		for _, publish in scope.publish do
 			publish()
 		end
+
 		return true, result
 	end)
+
 	local resumed, accepted, result = coroutine.resume(worker)
 	if coroutine.status(worker) ~= "dead" then
 		task.cancel(worker)
 		resumed = false
 		accepted = "Inventory mutation yielded; move yielding work outside withLock"
 	end
+
 	scopes[worker] = nil
 	if not resumed or not accepted then
 		for index = #scope.undo, 1, -1 do
 			scope.undo[index]()
 		end
+
 		restoreItems(scope)
 		for _, folder in { state.hotbar, state.storage } do
 			for _, slot in folder:GetChildren() do
@@ -166,29 +193,39 @@ function mutation.run(state: types.State, callback: types.TransactionCallback, r
 				end
 			end
 		end
+
 		table.clear(state.materials)
 		for name, count in materials do
 			state.materials[name] = count
 		end
+
 		state.storageCapacity = capacity
 		state.currentSlot = currentSlot
 		restorePublication()
+
 		if not resumed then
 			error(tostring(accepted), 0)
 		end
-		return table.unpack(result, 1, result.n)
+
+		return table.unpack(result, 1, (result :: any).n)
 	end
+
 	for item in scope.retired do
 		destroyItem(item)
 	end
+
 	for _, afterCommit in scope.afterCommit do
-		-- Side effects run after the inventory has committed; failure must not undo its save.
-		local ok, problem = pcall(afterCommit)
+		local ok, problem = pcall(function()
+			afterCommit()
+			return nil
+		end)
+
 		if not ok then
 			warn("[Inventory] Post-commit cleanup failed:", problem)
 		end
 	end
-	return table.unpack(result, 1, result.n)
+
+	return table.unpack(result, 1, (result :: any).n)
 end
 
 return mutation

@@ -1,7 +1,7 @@
 --!strict
 
 local remoteGuard = {}
-local buckets = setmetatable({}, { __mode = "k" }) :: { [Player]: { [string]: { count: number, startedAt: number } } }
+local buckets: { [Player]: { [string]: { count: number, startedAt: number } } } = setmetatable({}, { __mode = "k" }) :: any
 
 function remoteGuard.allow(player: Player, action: string, maximum: number, windowSeconds: number): boolean
 	local actions = buckets[player]

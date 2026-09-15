@@ -44,6 +44,7 @@ export type Replica = {
 	player: Player,
 	replica: ReplicaHandle?,
 	readyConnection: RBXScriptConnection?,
+	sync: (Replica, State) -> (),
 	setSlot: (Replica, protocol.Zone, number, protocol.ItemDescriptor?) -> (),
 	setCapacity: (Replica, number) -> (),
 	setCurrentSlot: (Replica, number?) -> (),

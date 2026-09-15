@@ -8,6 +8,7 @@ local materialUtils = require(replicatedStorage.SharedUtilities.MaterialUtils)
 local protocol = require(replicatedStorage.SharedUtilities.InventoryProtocol)
 
 local itemIds = require(script.Parent.ItemIds)
+local mutation = require(script.Parent.Parent.State.Mutation)
 local types = require(script.Parent.Parent.Contracts)
 local templateService = require(script.Parent.Templates)
 
@@ -151,24 +152,32 @@ function itemFactory:create(itemType: string, record: CreateRecord?): Model
 	assert(config, string.format("ItemConfig %s is missing", itemType))
 	local template = self.templates:getTemplate(itemType)
 	assert(template, string.format("Item template %s is missing", itemType))
+	local count = input.stackCount or 1
+	assert(isFiniteNumber(count) and count % 1 == 0, "StackCount must be a finite integer")
+	assert(count >= 1 and count <= itemUtils.getMaxStack(config), "StackCount is out of bounds")
 	local clone = template:Clone()
 	if not clone:IsA("Model") then
 		clone:Destroy()
 		error(string.format("Item template %s did not clone to a Model", itemType))
 	end
 	local item: Model = (clone :: unknown) :: Model
+	mutation.created(item)
+	local initialized, problem = pcall(function()
 	item.Name = itemType
 	item:SetAttribute("ItemId", itemIds.claim(input.itemId, itemUtils.generateItemId))
 	item:SetAttribute("ItemType", itemType)
 	item:SetAttribute("Class", itemUtils.getControllerClass(itemType))
 
-	local count = input.stackCount or 1
-	assert(typeof(count) == "number" and count % 1 == 0, "StackCount must be an integer")
-	assert(count >= 1 and count <= itemUtils.getMaxStack(config), "StackCount is out of bounds")
 	item:SetAttribute("StackCount", count)
 	itemUtils.applyPersistentAttributes(item, config, input.attributes)
 	self:resetTransients(item)
 	setPartsAnchored(item, true)
+	end)
+	if not initialized then
+		-- Claim may have failed before this clone received an ID.
+		self:destroy(item)
+		error(tostring(problem), 0)
+	end
 	return item
 end
 
@@ -223,27 +232,42 @@ function itemFactory:adoptWorldItem(item: Model): (Model?, string?)
 	itemUtils.applyPersistentAttributes(item, config, item:GetAttributes())
 	self:resetTransients(item)
 	setPartsAnchored(item, true)
+	end)
+	if not initialized then
+		-- Claim may have failed before this clone received an ID.
+		self:destroy(item)
+		error(tostring(problem), 0)
+	end
 	return item
 end
 
-function itemFactory:replaceClone(item: Model, resultItemType: string): Model
-	assert(not materialUtils.isMaterialType(resultItemType), "Materials cannot replace inventory items")
+local function replaceModel(self: Factory, item: Model, resultItemType: string, count: number): Model
 	local itemId = item:GetAttribute("ItemId")
 	assert(typeof(itemId) == "string" and itemId ~= "", "Replacement target has no ItemId")
-	local resultConfig = assert(self.templates:getConfig(resultItemType))
-	local attributes = itemUtils.getPersistentAttributes(item, resultConfig)
-	local parent = item.Parent
-	local pivot = item:GetPivot()
-	itemIds.release(itemId)
+	local config = assert(self.templates:getConfig(resultItemType))
+	-- Build with a temporary identity; the original remains valid if cloning fails.
 	local replacement = self:create(resultItemType, {
-		itemId = itemId,
-		stackCount = 1,
-		attributes = attributes :: types.PersistentAttributes,
+		stackCount = count,
+		attributes = itemUtils.getPersistentAttributes(item, config) :: types.PersistentAttributes,
 	})
-	replacement.Parent = parent
-	replacement:PivotTo(pivot)
-	item:Destroy()
+	local placed, problem = pcall(function()
+		replacement:PivotTo(item:GetPivot())
+		replacement.Parent = item.Parent
+	end)
+	if not placed then
+		self:destroy(replacement)
+		error(tostring(problem), 0)
+	end
+	mutation.watch(item)
+	itemIds.release(replacement)
+	item:SetAttribute("ItemId", nil)
+	replacement:SetAttribute("ItemId", itemId)
+	self:destroy(item)
 	return replacement
+end
+
+function itemFactory:replaceClone(item: Model, resultItemType: string): Model
+	return replaceModel(self, item, resultItemType, 1)
 end
 
 function itemFactory:repair(item: Model): Model?
@@ -258,32 +282,18 @@ function itemFactory:repair(item: Model): Model?
 	if config == nil or self.templates:getTemplate(itemType) == nil then
 		return nil
 	end
-	local validConfig: types.BaseConfig = (config :: unknown) :: types.BaseConfig
-	local itemId = item:GetAttribute("ItemId")
-	local record = {
-		itemId = if typeof(itemId) == "string" and itemId ~= "" then itemId else nil,
-		itemType = itemType,
-		stackCount = itemUtils.getStackCount(item, config),
-		attributes = itemUtils.getPersistentAttributes(item, validConfig) :: types.PersistentAttributes,
-	}
-	local parent = item.Parent
-	local pivot = item:GetPivot()
-	if record.itemId then
-		itemIds.release(record.itemId)
-	end
-	local ok, replacementValue = pcall(self.create, self, itemType, record)
-	if not ok or typeof(replacementValue) ~= "Instance" or not replacementValue:IsA("Model") then
-		warn(string.format("[Inventory] Failed to repair %s: %s", item:GetFullName(), tostring(replacementValue)))
+	local ok, replacement = pcall(replaceModel, self, item, itemType, itemUtils.getStackCount(item, config))
+	if not ok then
+		warn("[Inventory] Repair failed:", replacement)
 		return nil
 	end
-	local replacement: Model = replacementValue
-	replacement.Parent = parent
-	replacement:PivotTo(pivot)
-	item:Destroy()
 	return replacement
 end
 
 function itemFactory:destroy(item: Instance)
+	if mutation.retire(item) then
+		return
+	end
 	itemIds.release(item)
 	item:Destroy()
 end
