@@ -48,7 +48,9 @@ type PlayerActionContext = {
 local Service = {}
 Service.__index = Service
 local singleton: ServiceType?
-local playerActionContexts: { [thread]: PlayerActionContext } = setmetatable({}, { __mode = "k" })
+local playerActionContexts: { [thread]: PlayerActionContext } = (
+	setmetatable({}, { __mode = "k" }) :: any
+) :: { [thread]: PlayerActionContext }
 local playerActionGenerations: { [State]: number } = {}
 
 local function runWithPlayerActionContext(
@@ -181,7 +183,8 @@ function Service.withLock(self: ServiceType, player: Player, callback: types.Tra
 			end)
 		end
 	end
-	return state.queue:withLock(player, function()
+	--// mutation.run forwards every callback return value, so the queue callback is variadic rather than a TransactionValue.
+	local queuedTransaction = function(): ...unknown
 		local data = playerData.get(player)
 		if data == nil or self.states[player] ~= state or state.removing then
 			return protocol.failure(protocol.ResponseCodes.notReady)
@@ -194,7 +197,8 @@ function Service.withLock(self: ServiceType, player: Player, callback: types.Tra
 				state.replica:sync(state)
 			end
 		end)
-	end)
+	end
+	return state.queue:withLock(player, (queuedTransaction :: any) :: types.TransactionCallback)
 end
 
 function Service.commit(
@@ -449,7 +453,7 @@ function Service.giveMaterial(self: ServiceType, player: Player, materialType: s
 		}
 	end
 	local result = rawResult :: { [string]: unknown }
-	local resultCode = if typeof(result.code) == "string"
+	local resultCode: protocol.ResponseCode = if typeof(result.code) == "string"
 		then result.code :: protocol.ResponseCode
 		else protocol.ResponseCodes.notReady
 	if
@@ -465,7 +469,7 @@ function Service.giveMaterial(self: ServiceType, player: Player, materialType: s
 			items = {},
 		}
 	end
-	return result :: GrantResult
+	return (rawResult :: unknown) :: GrantResult
 end
 
 function Service.addItem(self: ServiceType, player: Player, record: protocol.ItemRecord): GrantResult

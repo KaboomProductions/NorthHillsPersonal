@@ -10,25 +10,11 @@ local inventoryStore = {}
 inventoryStore.__index = inventoryStore
 
 export type Connection = {
-	read Disconnect: (self: Connection) -> (),
+	Disconnect: (self: Connection) -> (),
 }
 
-type function Readonly(object: type)
-	if object:is("table") then
-		return object
-	end
-
-	local result = types.newtable()
-
-	for key, prop in object:properties() do
-		result:setreadproperty(key, prop.read)
-		result:setwriteproperty(key, types.never)
-	end
-
-	return result
-end
-
-export type ReadOnlyState = Readonly<protocol.InventoryState>
+--// Read-only by convention: the store publishes a fresh state table on every change, so consumers must not mutate it.
+export type ReadOnlyState = protocol.InventoryState
 
 export type Source<T> = (() -> T) & ((value: T) -> T)
 

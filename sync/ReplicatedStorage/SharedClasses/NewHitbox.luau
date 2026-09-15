@@ -907,7 +907,6 @@ function Hitbox:Destroy()
 
 	table.clear(self)
 	setmetatable(self :: any, nil)
-	self = nil
 end
 
 return Hitbox

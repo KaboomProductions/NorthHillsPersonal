@@ -211,7 +211,10 @@ function toolControllerHost._beginLinger(self: ToolControllerHost): ()
 	}
 
 	if controller.unequip then
-		local succeeded, errorMessage = pcall(controller.unequip, controller, {})
+		local succeeded, errorMessage = pcall(function()
+			controller.unequip(controller, {})
+			return nil
+		end)
 		if not succeeded then
 			warn("[Inventory] Client holster animation failed: " .. tostring(errorMessage))
 		end
@@ -256,9 +259,12 @@ function toolControllerHost._playEquipAnimation(_self: ToolControllerHost, contr
 	if controller.equip == nil then
 		return
 	end
-	local succeeded, errorMessage = pcall(controller.equip, controller, {
-		isSpecialEquip = item:GetAttribute(attributes.tool.specialEquip) == true,
-	})
+	local succeeded, errorMessage = pcall(function()
+		controller.equip(controller, {
+			isSpecialEquip = item:GetAttribute(attributes.tool.specialEquip) == true,
+		})
+		return nil
+	end)
 	if not succeeded then
 		warn("[Inventory] Client equip animation failed: " .. tostring(errorMessage))
 	end
@@ -269,7 +275,10 @@ function toolControllerHost._interruptEquipAnimation(self: ToolControllerHost): 
 	if controller == nil or controller.interruptEquip == nil or self.interrupted then
 		return
 	end
-	local succeeded, errorMessage = pcall(controller.interruptEquip, controller)
+	local succeeded, errorMessage = pcall(function()
+		controller.interruptEquip(controller)
+		return nil
+	end)
 	if not succeeded then
 		warn("[Inventory] Client equip interruption failed: " .. tostring(errorMessage))
 		return
@@ -394,7 +403,7 @@ function toolControllerHost._tryUpdate(self: ToolControllerHost): ()
 			return
 		end
 
-		local controllerClass = require(classModule)
+		local controllerClass = (require :: any)(classModule)
 		local succeeded, controllerValue = pcall(controllerClass.new, item, config)
 		if not succeeded then
 			self.loadingItem = nil

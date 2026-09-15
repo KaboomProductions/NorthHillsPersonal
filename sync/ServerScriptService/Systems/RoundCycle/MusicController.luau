@@ -73,10 +73,16 @@ function musicController.fadeOutCurrent()
 end
 
 function musicController.getCurrentTrackLength(): number
-	return currentMusicTrack and (currentMusicTrack:GetAttribute("EndTimePosition") or currentMusicTrack.TimeLength)
-		or 0
+	if currentMusicTrack == nil then
+		return 0
+	end
 
-	--// idk why this is saying that there's an error lol
+	local endTimePosition = currentMusicTrack:GetAttribute("EndTimePosition")
+	if typeof(endTimePosition) == "number" then
+		return endTimePosition
+	end
+
+	return currentMusicTrack.TimeLength
 end
 
 return musicController

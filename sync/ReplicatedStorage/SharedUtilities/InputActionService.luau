@@ -9,9 +9,9 @@
 ///////////////////////////////////////////////
 ]]
 
-local IAS = require("@self/TypeDefinition")
-local IASignal = require("@self/IllusionSignal")
-local BindUtils = require("@self/BindUtils")
+local IAS = require(script.TypeDefinition)
+local IASignal = require(script.IllusionSignal)
+local BindUtils = require(script.BindUtils)
 
 export type IAScriptConnection = IAS.IAScriptConnection
 export type IAScriptSignal = IAS.IAScriptSignal

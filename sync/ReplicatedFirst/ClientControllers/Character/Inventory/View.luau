@@ -27,7 +27,7 @@ export type View = {
 	selection: Selection.Selection?,
 	throwFlow: ThrowFlow.ThrowFlow?,
 	isOpen: InventoryStore.Source<boolean>,
-	mouseToken: {}?,
+	mouseToken: mouseUnlock.MouseRequestToken?,
 	registry: SlotRegistry.SlotRegistry,
 	layer: DragLayer.DragLayer,
 	dragController: DragController.DragController,
@@ -103,7 +103,7 @@ function view:equip(index: number): ()
 	selection:setIntent(if selection.selectedSlot() == index then nil else index)
 end
 
-function view:setOpen(open: boolean): ()
+function view.setOpen(self: View, open: boolean): ()
 	if self.isOpen() == open then
 		return
 	end
@@ -111,12 +111,14 @@ function view:setOpen(open: boolean): ()
 	setOpen(open)
 	if open then
 		self.mouseToken = mouseUnlock.acquire("inventory")
-	else
-		if self.mouseToken then
-			mouseUnlock.release(self.mouseToken)
-		end
-		self.mouseToken = nil
+		return
 	end
+
+	local mouseToken = self.mouseToken
+	if mouseToken then
+		mouseUnlock.release(mouseToken)
+	end
+	self.mouseToken = nil
 end
 
 function view:toggle(): ()

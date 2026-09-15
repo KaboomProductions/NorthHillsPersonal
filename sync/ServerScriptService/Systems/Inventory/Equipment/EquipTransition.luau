@@ -139,11 +139,7 @@ function equipTransition.setDesiredSlot(
 	return result
 end
 
-function equipTransition._waitForHolster(
-	self: InternalTransition,
-	slotNumber: number,
-	duration: number
-): boolean
+function equipTransition._waitForHolster(self: InternalTransition, slotNumber: number, duration: number): boolean
 	if duration <= 0 or self.forceCleanup or self.destroyed or self.desiredSlot ~= nil then
 		return true
 	end
@@ -193,11 +189,8 @@ function equipTransition._unequip(self: InternalTransition, slotNumber: number, 
 		end
 
 		if controller and typeof(controller.unequip) == "function" then
-			local succeeded, errorMessage = pcall(
-				controller.unequip :: types.ControllerMethod,
-				controller,
-				{ skipAnimation = true }
-			)
+			local succeeded, errorMessage =
+				pcall(controller.unequip :: types.ControllerMethod, controller, { skipAnimation = true })
 			if not succeeded then
 				warn("[Inventory] Tool controller failed to begin unequip: " .. tostring(errorMessage))
 			end
@@ -331,7 +324,10 @@ function equipTransition._equip(self: InternalTransition, slotNumber: number, ve
 		end
 
 		if typeof(controller.prepareEquip) == "function" then
-			local preparedEquip, prepareError = pcall(controller.prepareEquip, controller)
+			local preparedEquip, prepareError = pcall(function()
+				controller.prepareEquip(controller)
+				return nil
+			end)
 			if not preparedEquip then
 				warn(
 					string.format(
@@ -374,7 +370,10 @@ function equipTransition._equip(self: InternalTransition, slotNumber: number, ve
 		end
 		itemRigging.setAnchored(prepared.item, false)
 		if typeof(controller.equip) == "function" then
-			local equipped, equipError = pcall(controller.equip, controller)
+			local equipped, equipError = pcall(function()
+				controller.equip(controller)
+				return nil
+			end)
 			if not equipped then
 				warn(
 					string.format(

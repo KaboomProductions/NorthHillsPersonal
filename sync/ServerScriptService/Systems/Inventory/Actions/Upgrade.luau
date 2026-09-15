@@ -52,13 +52,17 @@ function upgrade.handle(
 
 		local resultItemType = selectedUpgrade.resultItemType
 		local validResult = service.templates:validate(resultItemType)
-		if materialUtils.isMaterialType(resultItemType) or not validResult
-			or not itemUtils.canMoveToZone(resultItemType, target.zone) then
+		if
+			materialUtils.isMaterialType(resultItemType)
+			or not validResult
+			or not itemUtils.canMoveToZone(resultItemType, target.zone)
+		then
 			return protocol.failure(protocol.ResponseCodes.notUpgradeable)
 		end
 
 		local requiredMaterials: { [string]: number } = {}
-		for _, requirement in ipairs(selectedUpgrade.materials or {}) do
+		local upgradeMaterials: { types.UpgradeMaterial } = selectedUpgrade.materials or {}
+		for _, requirement in ipairs(upgradeMaterials) do
 			if
 				not materialUtils.isMaterialType(requirement.materialType)
 				or not protocol.isFiniteNumber(requirement.count)

@@ -35,12 +35,22 @@ function autoRig.createMotor(info: {
 	newMotor.Parent = info.part0
 end
 
-function autoRig.rig(info: { tool: Tool, character: Model, config: {} })
+export type RigJointConfig = {
+	part0: string,
+	part1: string,
+	c0: CFrame?,
+	c1: CFrame?,
+	isWeld: boolean?,
+}
+
+export type RigConfig = { RigJointConfig } & { isWeld: boolean? }
+
+function autoRig.rig(info: { tool: Tool, character: Model, config: RigConfig })
 	local tool: Tool = info.tool
 	local character: Model = info.character
 
 	local rigObjects = {}
-	local config: {} = info.config
+	local config: RigConfig = info.config
 
 	for _, part in ipairs(character:GetChildren()) do
 		if not part:IsA("BasePart") then
