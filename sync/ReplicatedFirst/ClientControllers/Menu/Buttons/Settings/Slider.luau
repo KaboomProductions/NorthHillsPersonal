@@ -7,6 +7,9 @@ local springModule = require(replicatedStorage.SharedClasses.Spring)
 local connectionUtilities = require(replicatedStorage.SharedUtilities.ConnectionUtils)
 local haptics = require(replicatedFirst.ClientControllers.Player.Haptics)
 
+local inputBindings = require(replicatedFirst.ClientUtilities.InputBindings)
+local keybinds = require(replicatedStorage.SharedAssets.Keybinds)
+
 local transferSettingRemote = replicatedStorage.Communication.RemoteFunctions.TransferSetting
 
 local minimumThumbPosition = 0.025
@@ -33,6 +36,7 @@ sliderSettingController.__vars = {
 
 local sliderControllers = {}
 local activeSliderController = nil
+local gamepadBindings: { inputBindings.Binding } = {}
 local hoverTextColor = Color3.new(1, 1, 1)
 
 export type SliderSettingDefinition = {
@@ -72,6 +76,63 @@ local function findCursorSlider(): typeof(sliderSettingController)?
 	end
 
 	return closestSlider
+end
+
+local function getGamepadSlider()
+	if userInputService.PreferredInput ~= Enum.PreferredInput.Gamepad then
+		return nil
+	end
+	local slider = findCursorSlider()
+	if activeSliderController and activeSliderController ~= slider then
+		return nil
+	end
+	return slider
+end
+
+local function bindGamepadActions()
+	if #gamepadBindings > 0 then
+		return
+	end
+	local dragBinding = inputBindings.create(keybinds.sliderDrag)
+	table.insert(gamepadBindings, dragBinding)
+	inputBindings.connect(dragBinding, function(_active: boolean, pressed: boolean)
+		if not pressed then
+			if activeSliderController then
+				activeSliderController:endDrag()
+			end
+			return
+		end
+		local slider = getGamepadSlider()
+		if slider then
+			slider:startDrag()
+			slider:updateFromMousePosition(userInputService:GetMouseLocation().X)
+		end
+	end)
+
+	local function bindStep(definition: keybinds.Action, direction: number)
+		local binding = inputBindings.create(definition)
+		table.insert(gamepadBindings, binding)
+		inputBindings.connect(binding, function(_active: boolean, pressed: boolean)
+			local slider = getGamepadSlider()
+			if not pressed or not slider then
+				return
+			end
+			slider:updateFromUserInput(slider.__vars.currentValue + direction * gamepadStepPercent)
+			slider:confirmCurrentValue()
+		end)
+	end
+	bindStep(keybinds.sliderDecrease, -1)
+	bindStep(keybinds.sliderIncrease, 1)
+end
+
+local function releaseGamepadActions()
+	if next(sliderControllers) ~= nil then
+		return
+	end
+	for _, binding in gamepadBindings do
+		binding:Destroy()
+	end
+	table.clear(gamepadBindings)
 end
 
 local function getOrCreateThumbScale(sliderThumb: GuiObject): UIScale
@@ -135,7 +196,9 @@ function sliderSettingController:isCursorOverSlider(): boolean
 	local ancestor: Instance? = self.frame
 
 	while ancestor and ancestor:IsA("GuiObject") do
-		if not ancestor.Visible or (ancestor.ClipsDescendants and not isPointWithinGuiObject(cursorPosition, ancestor)) then
+		if
+			not ancestor.Visible or (ancestor.ClipsDescendants and not isPointWithinGuiObject(cursorPosition, ancestor))
+		then
 			return false
 		end
 
@@ -195,11 +258,7 @@ function sliderSettingController:startDrag()
 
 	self.connections.dragEnded = userInputService.InputEnded:Connect(function(inputObject: InputObject)
 		local inputType = inputObject.UserInputType
-		local isGamepadConfirm = inputObject.KeyCode == Enum.KeyCode.ButtonA
-		if inputType ~= Enum.UserInputType.MouseButton1
-			and inputType ~= Enum.UserInputType.Touch
-			and not isGamepadConfirm
-		then
+		if inputType ~= Enum.UserInputType.MouseButton1 and inputType ~= Enum.UserInputType.Touch then
 			return
 		end
 
@@ -231,6 +290,7 @@ function sliderSettingController:init()
 	self.amountLabel.Text = tostring(math.round(initialValue)) .. "%"
 	self.sliderThumb.Position = UDim2.fromScale(initialThumbX, self.__vars.thumbYScale)
 	sliderControllers[self] = true
+	bindGamepadActions()
 
 	self.connections.update = runService.RenderStepped:Connect(function(deltaTime: number)
 		if self.__vars.isDragging and userInputService.PreferredInput == Enum.PreferredInput.Gamepad then
@@ -243,38 +303,10 @@ function sliderSettingController:init()
 		local hoveredSlider = activeSliderController or findCursorSlider()
 		local isHovered = hoveredSlider == self
 		local hoverAlpha = 1 - math.exp(-hoverLerpSpeed * deltaTime)
-		local targetScale = if isHovered
-			then self.thumbBaseScale * hoverThumbScaleMultiplier
-			else self.thumbBaseScale
+		local targetScale = if isHovered then self.thumbBaseScale * hoverThumbScaleMultiplier else self.thumbBaseScale
 		local targetTextColor = if isHovered then self.amountHoverColor else self.amountBaseColor
 		self.thumbScale.Scale += (targetScale - self.thumbScale.Scale) * hoverAlpha
 		self.amountLabel.TextColor3 = self.amountLabel.TextColor3:Lerp(targetTextColor, hoverAlpha)
-	end)
-
-	self.connections.gamepadInput = userInputService.InputBegan:Connect(function(inputObject: InputObject)
-		if userInputService.PreferredInput ~= Enum.PreferredInput.Gamepad or findCursorSlider() ~= self then
-			return
-		end
-		if activeSliderController and activeSliderController ~= self then
-			return
-		end
-
-		local keyCode = inputObject.KeyCode
-		if keyCode == Enum.KeyCode.ButtonA then
-			self:startDrag()
-			if activeSliderController == self then
-				self:updateFromMousePosition(userInputService:GetMouseLocation().X)
-			end
-			return
-		end
-
-		if keyCode ~= Enum.KeyCode.DPadLeft and keyCode ~= Enum.KeyCode.DPadRight then
-			return
-		end
-
-		local direction = if keyCode == Enum.KeyCode.DPadLeft then -1 else 1
-		self:updateFromUserInput(self.__vars.currentValue + direction * gamepadStepPercent)
-		self:confirmCurrentValue()
 	end)
 
 	self.connections.barInput = barFrame.InputBegan:Connect(function(inputObject: InputObject)
@@ -329,6 +361,7 @@ function sliderSettingController:destroy()
 	if activeSliderController == self then
 		activeSliderController = nil
 	end
+	releaseGamepadActions()
 	if self.thumbScale then
 		self.thumbScale.Scale = self.thumbBaseScale
 	end

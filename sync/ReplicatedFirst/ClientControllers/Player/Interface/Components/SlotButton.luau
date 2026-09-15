@@ -1,10 +1,9 @@
---!strict
-
 local replicatedStorage = game:GetService("ReplicatedStorage")
 
 local vide = require(replicatedStorage.ExternalLibraries.vide)
 
 local Theme = require(script.Parent.Theme)
+local keybindBadge = require(script.Parent.KeybindBadge)
 
 local create = vide.create
 local ASSET_PREFIX = "rbxassetid://"
@@ -92,40 +91,6 @@ local function createDurabilityBar(value: () -> number): ImageLabel
 	})
 end
 
-local function createKeybindBadge(index: number, disabled: () -> boolean): ImageLabel
-	return create("ImageLabel")({
-		Name = "KeybindBadge",
-		Active = false,
-		BackgroundTransparency = 1,
-		Image = Theme.Images.KeybindBadge,
-		ImageTransparency = function()
-			return if disabled() then 0.65 else 0
-		end,
-		Position = UDim2.fromScale(0.0557474, 0.0557474),
-		Selectable = false,
-		Size = UDim2.fromScale(0.194783, 0.194783),
-		ZIndex = 4,
-		create("TextLabel")({
-			Name = "Number",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundTransparency = 1,
-			FontFace = Theme.Fonts.JuraBold,
-			Position = UDim2.fromScale(0.49, 0.5),
-			Size = UDim2.fromScale(0.728393, 0.728393),
-			Text = if index == 10 then "0" else tostring(index),
-			TextColor3 = function()
-				return if disabled() then Theme.Colors.DisabledText else Theme.Colors.White
-			end,
-			TextScaled = true,
-			ZIndex = 5,
-			create("UITextSizeConstraint")({
-				Name = "UITextSizeConstraint",
-				MaxTextSize = Theme.TextSizeCaps.HotbarKeybind,
-			}),
-		}),
-	})
-end
-
 return function(props: SlotProps)
 	local function descriptor(): ItemDescriptor?
 		return props.descriptor()
@@ -174,8 +139,8 @@ return function(props: SlotProps)
 			return not disabled()
 		end,
 		Selectable = false,
-		MouseButton1Click = function()
-			if disabled() or descriptor() == nil then
+		Activated = function()
+			if disabled() then
 				return
 			end
 			if props.onActivated then
@@ -300,19 +265,22 @@ return function(props: SlotProps)
 	}
 
 	if props.index ~= nil then
-		table.insert(children, createKeybindBadge(props.index, disabled))
+		table.insert(children, keybindBadge({ index = props.index, disabled = disabled }))
 	end
 	if props.durability ~= nil then
 		table.insert(children, createDurabilityBar(props.durability))
 	end
 	if props.selectionAnimation ~= nil then
 		local selectionAnimation = props.selectionAnimation
-		table.insert(children, create("UIScale")({
-			Name = "SelectionScale",
-			Scale = function()
-				return math.lerp(1, selectionAnimation.selectedScale, getSelectionProgress())
-			end,
-		}))
+		table.insert(
+			children,
+			create("UIScale")({
+				Name = "SelectionScale",
+				Scale = function()
+					return math.lerp(1, selectionAnimation.selectedScale, getSelectionProgress())
+				end,
+			})
+		)
 	end
 
 	local button = create("ImageButton")(children) :: ImageButton

@@ -4,41 +4,28 @@ local players = game:GetService("Players")
 local replicatedFirst = game:GetService("ReplicatedFirst")
 local replicatedStorage = game:GetService("ReplicatedStorage")
 
-local inputHelpers = require(replicatedFirst.ClientUtilities.InputHelpers)
-local InputActionService = require(replicatedStorage.SharedUtilities.InputActionService)
+local inputBindings = require(replicatedFirst.ClientUtilities.InputBindings)
+local bindingDefinitions = require(replicatedStorage.SharedAssets.Keybinds)
 local protocol = require(replicatedStorage.SharedUtilities.InventoryProtocol)
 local itemUtils = require(replicatedStorage.SharedUtilities.ItemUtils)
-local InventoryStore = require(script.Parent.Parent.InventoryStore)
-local InventoryRequests = require(script.Parent.Parent.Requests.InventoryRequests)
-local Selection = require(script.Parent.Parent.Selection)
-local View = require(script.Parent.Parent.View)
-local ThrowFlow = require(script.Parent.Parent.Requests.ThrowFlow)
+local inventoryStore = require(script.Parent.Parent.InventoryStore)
+local inventoryRequests = require(script.Parent.Parent.Requests.InventoryRequests)
+local selectionController = require(script.Parent.Parent.Selection)
+local inventoryView = require(script.Parent.Parent.View)
+local throwFlowController = require(script.Parent.Parent.Requests.ThrowFlow)
 
 local keybinds = {}
 keybinds.__index = keybinds
 
-local keySlots = {
-	[Enum.KeyCode.One] = 1,
-	[Enum.KeyCode.Two] = 2,
-	[Enum.KeyCode.Three] = 3,
-	[Enum.KeyCode.Four] = 4,
-	[Enum.KeyCode.Five] = 5,
-	[Enum.KeyCode.Six] = 6,
-	[Enum.KeyCode.Seven] = 7,
-	[Enum.KeyCode.Eight] = 8,
-	[Enum.KeyCode.Nine] = 9,
-	[Enum.KeyCode.Zero] = 10,
-}
-
 type Keybinds = {
 	player: Player,
-	store: InventoryStore.Store?,
-	requests: InventoryRequests.Requests?,
-	selection: Selection.Selection?,
-	view: View.View?,
-	throwFlow: ThrowFlow.ThrowFlow?,
-	connections: { [string]: InputActionService.IAScriptConnection },
-	bindings: { [string]: InputActionService.BindingObject },
+	store: inventoryStore.Store?,
+	requests: inventoryRequests.Requests?,
+	selection: selectionController.Selection?,
+	view: inventoryView.View?,
+	throwFlow: throwFlowController.ThrowFlow?,
+	connections: { [string]: inputBindings.Connection },
+	bindings: { [string]: inputBindings.Binding },
 	_currentDescriptor: (self: Keybinds) -> protocol.ItemDescriptor?,
 	_isBlocked: (self: Keybinds) -> boolean,
 	_equip: (self: Keybinds, index: number) -> (),
@@ -46,92 +33,83 @@ type Keybinds = {
 	_dropCurrent: (self: Keybinds) -> (),
 	_isThrowable: (self: Keybinds, descriptor: protocol.ItemDescriptor) -> boolean,
 	_throwCurrent: (self: Keybinds) -> (),
+	init: (self: Keybinds) -> (),
 	destroy: (self: Keybinds) -> (),
 }
 
-local function attachBinding(
-	self: Keybinds,
-	name: string,
-	keyCodes: { Enum.KeyCode },
-	callback: () -> (),
-	priority: number?,
-	sink: boolean?
-)
-	local binding = InputActionService.new(name, Enum.InputActionType.Bool)
-	if priority ~= nil then
-		binding:SetPriority(priority)
-	end
-	if sink ~= nil then
-		binding:SetSink(sink)
-	end
-	inputHelpers.attachAllKeysToInput(binding, keyCodes)
-	self.bindings[name] = binding
-	self.connections[name] = binding.Activated:Connect(function(_active: InputActionService.variant, pressed: boolean?)
-		if not pressed then
-			return
+local function attachBinding(self: Keybinds, definition: bindingDefinitions.Action, callback: () -> ())
+	local options = if definition == bindingDefinitions.toggleInventory
+		then { priority = Enum.ContextActionPriority.High.Value, sink = false }
+		else nil
+	local binding = inputBindings.create(definition, options)
+	self.bindings[definition.name] = binding
+	self.connections[definition.name] = inputBindings.connect(binding, function(_active: boolean, pressed: boolean)
+		if pressed then
+			callback()
 		end
-
-		callback()
 	end)
 end
 
-function keybinds.new(
-	store: InventoryStore.Store,
-	requests: InventoryRequests.Requests,
-	selection: Selection.Selection,
-	view: View.View,
-	throwFlow: ThrowFlow.ThrowFlow
-): Keybinds
-	local self: Keybinds = (
-		setmetatable({
-			player = players.LocalPlayer,
-			store = store,
-			requests = requests,
-			selection = selection,
-			view = view,
-			throwFlow = throwFlow,
-			connections = {} :: { [string]: InputActionService.IAScriptConnection },
-			bindings = {} :: { [string]: InputActionService.BindingObject },
-		}, keybinds) :: unknown
-	) :: Keybinds
+type Options = {
+	store: inventoryStore.Store,
+	requests: inventoryRequests.Requests,
+	selection: selectionController.Selection,
+	view: inventoryView.View,
+	throwFlow: throwFlowController.ThrowFlow,
+}
 
-	attachBinding(self, "toggleInventory", { Enum.KeyCode.I }, function()
-		local currentView = self.view :: View.View
+function keybinds:init()
+	attachBinding(self, bindingDefinitions.toggleInventory, function()
+		local currentView = self.view :: inventoryView.View
 		currentView:toggle()
-	end, Enum.ContextActionPriority.High.Value, false)
+	end)
 
-	for keyCode, index in keySlots do
-		local slot = index
-		attachBinding(self, "equipSlot" .. slot, { keyCode }, function()
+	for slot, definition in bindingDefinitions.hotbarSlots do
+		attachBinding(self, definition, function()
 			self:_equip(slot)
 		end)
 	end
 
-	attachBinding(self, "cycleHotbarNext", { Enum.KeyCode.ButtonR1 }, function()
+	attachBinding(self, bindingDefinitions.cycleHotbarNext, function()
 		self:_cycle(1)
 	end)
-	attachBinding(self, "cycleHotbarPrevious", { Enum.KeyCode.ButtonL1 }, function()
+	attachBinding(self, bindingDefinitions.cycleHotbarPrevious, function()
 		self:_cycle(-1)
 	end)
 
-	attachBinding(self, "dropItem", { Enum.KeyCode.Backspace }, function()
+	attachBinding(self, bindingDefinitions.dropItem, function()
 		self:_dropCurrent()
 	end)
 
-	attachBinding(self, "throwItem", { Enum.KeyCode.G }, function()
+	attachBinding(self, bindingDefinitions.throwItem, function()
 		self:_throwCurrent()
 	end)
+end
 
+function keybinds.new(options: Options): Keybinds
+	local self: Keybinds = (
+		setmetatable({
+			player = players.LocalPlayer,
+			store = options.store,
+			requests = options.requests,
+			selection = options.selection,
+			view = options.view,
+			throwFlow = options.throwFlow,
+			connections = {},
+			bindings = {},
+		}, keybinds) :: unknown
+	) :: Keybinds
+	self:init()
 	return self
 end
 
 function keybinds:_currentDescriptor(): protocol.ItemDescriptor?
-	local state = (self.store :: InventoryStore.Store).state()
+	local state = (self.store :: inventoryStore.Store).state()
 	return state.currentSlot and state.hotbar[tostring(state.currentSlot)] or nil
 end
 
 function keybinds:_isBlocked(): boolean
-	return self.player:GetAttribute("InMenu") == true or not (self.store :: InventoryStore.Store):isEnabled()
+	return self.player:GetAttribute("InMenu") == true or not (self.store :: inventoryStore.Store):isEnabled()
 end
 
 function keybinds:_equip(index: number): ()
@@ -139,7 +117,7 @@ function keybinds:_equip(index: number): ()
 		return
 	end
 
-	local selection = self.selection :: Selection.Selection
+	local selection = self.selection :: selectionController.Selection
 	selection:setIntent(if selection.selectedSlot() == index then nil else index)
 end
 
@@ -148,8 +126,8 @@ function keybinds:_cycle(direction: number): ()
 		return
 	end
 
-	local state = (self.store :: InventoryStore.Store).state()
-	local selection = self.selection :: Selection.Selection
+	local state = (self.store :: inventoryStore.Store).state()
+	local selection = self.selection :: selectionController.Selection
 	local start = selection.selectedSlot() or state.currentSlot or (if direction > 0 then 0 else 11)
 	for offset = 1, 10 do
 		local index = ((start - 1 + direction * offset) % 10) + 1
@@ -171,7 +149,7 @@ function keybinds:_dropCurrent(): ()
 	end
 
 	local direction = workspace.CurrentCamera and workspace.CurrentCamera.CFrame.LookVector or Vector3.zAxis
-	local requests = self.requests :: InventoryRequests.Requests
+	local requests = self.requests :: inventoryRequests.Requests
 	requests:drop(descriptor.itemId, direction)
 end
 
@@ -194,7 +172,7 @@ function keybinds:_throwCurrent(): ()
 		return
 	end
 
-	(self.throwFlow :: ThrowFlow.ThrowFlow):throw(descriptor.itemId)
+	(self.throwFlow :: throwFlowController.ThrowFlow):throw(descriptor.itemId)
 end
 
 function keybinds:destroy(): ()

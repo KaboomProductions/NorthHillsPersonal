@@ -86,7 +86,7 @@ local function createStorageSlot(
 		layoutOrder = index,
 		registerDragHandle = function(button: GuiObject): () -> ()
 			local unregister = props.registry:register(protocol.Zones.storage, index, button, entry)
-			local cleanupDrag = props.dragController:attach(button, entry)
+			local cleanupDrag = props.dragController:attach(button :: GuiButton, entry)
 			local secondaryClick = (button :: ImageButton).MouseButton2Click:Connect(function()
 				local current = entry()
 				if current.descriptor and not current.disabled and not current.locked then

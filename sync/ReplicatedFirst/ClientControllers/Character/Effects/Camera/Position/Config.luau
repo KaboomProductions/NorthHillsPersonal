@@ -8,7 +8,6 @@ local config = {
 	firstPersonOffset = Vector3.new(0, 0, -1),
 	thirdPersonOffset = Vector3.new(1.8, 0.8, 0),
 	thirdPersonDistance = 3.6,
-	toggleKeys = { Enum.KeyCode.Q },
 }
 
 return config

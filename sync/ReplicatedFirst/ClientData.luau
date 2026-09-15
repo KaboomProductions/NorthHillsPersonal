@@ -7,11 +7,6 @@ local clientConfig = require(script.ClientConfig)
 type booleanRequestTable = bucketUtilities.booleanRequestTable
 type numberModifierTable = bucketUtilities.numberModifierTable
 type vignetteMap = { [string]: ImageLabel }
-type cameraRecoilImpulse = {
-	config: { [string]: any },
-	isAiming: boolean,
-}
-
 local clientData = {}
 clientData.InInventory = false
 clientData.fieldOfViewModifiers = {} :: numberModifierTable
@@ -23,8 +18,6 @@ clientData.clientConfig = clientConfig
 clientData.movementLocks = {} :: booleanRequestTable
 clientData.perspectiveLocks = {} :: booleanRequestTable
 clientData.cameraLocks = {} :: booleanRequestTable
-clientData.cameraRecoilImpulses = {} :: { cameraRecoilImpulse }
-clientData.isAiming = false
 clientData.isInventoryOpen = false
 clientData.vignetteTemplateName = "Default"
 clientData.vignettes = {} :: vignetteMap
@@ -47,13 +40,6 @@ end
 
 function clientData.isMobile(): boolean
 	return userInputService.TouchEnabled and not userInputService.MouseEnabled and not userInputService.KeyboardEnabled
-end
-
-function clientData.queueCameraRecoil(config: { [string]: any }, isAiming: boolean)
-	table.insert(clientData.cameraRecoilImpulses, {
-		config = config,
-		isAiming = isAiming,
-	})
 end
 
 function clientData.getTotalSpeed(): number

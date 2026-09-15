@@ -8,14 +8,11 @@ local replicatedFirst = game:GetService("ReplicatedFirst")
 local player = players.LocalPlayer
 
 local sharedUtilities = replicatedStorage.SharedUtilities
-local clientUtilities = replicatedFirst.ClientUtilities
 local sharedAssets = replicatedStorage.SharedAssets
 
 local animationUtilities = require(sharedUtilities.Animation)
 local attributeConstants = require(sharedAssets.Attributes)
 local haptics = require(replicatedFirst.ClientControllers.Player.Haptics)
-local inputActionService = require(sharedUtilities.InputActionService)
-local inputHelpers = require(clientUtilities.InputHelpers)
 local toolAttributes = attributeConstants.tool
 
 local TRACK_TRANSITION_TIME_SECONDS = 0.05
@@ -82,6 +79,8 @@ function lanternController:init()
 
 	self.interface = player.PlayerGui:WaitForChild("Interface", 3)
 	self.mobileFrame = self.interface.Mobile
+	self.activationButton = self.mobileFrame.ActivateLantern
+	self.activationButton.Visible = false
 
 	self.connections.onMainEvent = self.mainRemote.OnClientEvent:Connect(function(
 		event: string,
@@ -149,19 +148,6 @@ function lanternController:activate(info: { isServerReplication: boolean })
 	self:toggleAtMarker()
 end
 
-function lanternController:_bindActivation()
-	if self.activationBind then
-		return
-	end
-	self.activationBind = inputActionService.new("toggleActivationLantern", Enum.InputActionType.Bool)
-	inputHelpers.wireMobileButton(self.activationBind, self.mobileFrame.ActivateLantern, "ToggleLantern")
-	self.activationBind.Activated:Connect(function(_active: Vector2 | Vector3 | boolean | number, pressed: boolean)
-		if pressed then
-			self:activate({})
-		end
-	end)
-end
-
 function lanternController:playIdleAfterEquip(equipTrack: AnimationTrack, transitionVersion: number)
 	equipTrack.Stopped:Once(function()
 		if self.animationTransitionVersion ~= transitionVersion or not self.isEquipped or self.isUnequipping then
@@ -216,8 +202,6 @@ function lanternController:equip()
 	elseif self.tracks.idle then
 		self.tracks.idle:Play(TRACK_TRANSITION_TIME_SECONDS)
 	end
-	self:_bindActivation()
-	inputHelpers.mobileButtonHolder.setVisible("ToggleLantern", true)
 
 	task.spawn(function()
 		task.wait(0.1)
@@ -231,11 +215,6 @@ end
 function lanternController:interruptEquip()
 	self.isEquipped = false
 	self.isUnequipping = true
-	inputHelpers.mobileButtonHolder.setVisible("ToggleLantern", false)
-	if self.activationBind then
-		self.activationBind:Destroy()
-		self.activationBind = nil
-	end
 	self:beginUnequipAnimation()
 end
 
@@ -244,13 +223,6 @@ function lanternController:unequip(info: { skipAnimation: boolean? }?)
 
 	self.isEquipped = false
 	self.isUnequipping = true
-
-	inputHelpers.mobileButtonHolder.setVisible("ToggleLantern", false)
-
-	if self.activationBind then
-		self.activationBind:Destroy()
-		self.activationBind = nil
-	end
 
 	if self.tool:GetAttribute(toolAttributes.toggled) then
 		self.mainRemote:FireServer("activateSilent")
@@ -271,13 +243,6 @@ function lanternController:destroy()
 	self.isUnequipping = false
 	self.animationTransitionVersion += 1
 	self:cancelAllTracks()
-
-	inputHelpers.mobileButtonHolder.setVisible("ToggleLantern", false)
-
-	if self.activationBind then
-		self.activationBind:Destroy()
-		self.activationBind = nil
-	end
 
 	for connectionName, connection in pairs(self.connections) do
 		connection:Disconnect()

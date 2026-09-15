@@ -11,7 +11,6 @@ local config = require(script.Config)
 local player = players.LocalPlayer
 local tau = 2 * math.pi
 local identityCFrame = CFrame.identity
-local aimingMotionScale = 0.25
 
 local headBobController = {}
 headBobController.__index = headBobController
@@ -111,13 +110,6 @@ function headBobController:computeOffset(deltaTime: number): CFrame
 		targetPitch += math.rad(-math.cos(stepPhase) * config.pitchAmplitude * amplitude * rotationScale)
 		targetYaw += math.rad(math.sin(cyclePhase) * config.yawAmplitude * amplitude * rotationScale)
 	end
-
-	local motionScale = clientData.isAiming and aimingMotionScale or 1
-	targetVertical *= motionScale
-	targetLateral *= motionScale
-	targetRoll *= motionScale
-	targetPitch *= motionScale
-	targetYaw *= motionScale
 
 	--// Always smooth toward the target — when stopping this gracefully
 	--// decays to zero instead of snapping to identity.

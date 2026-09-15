@@ -1,5 +1,4 @@
 local replicatedFirst = game:GetService("ReplicatedFirst")
-local replicatedStorage = game:GetService("ReplicatedStorage")
 local runService = game:GetService("RunService")
 local players = game:GetService("Players")
 local tweenService = game:GetService("TweenService")
@@ -7,7 +6,6 @@ local tweenService = game:GetService("TweenService")
 local player = players.LocalPlayer
 
 local clientData = require(replicatedFirst.ClientData)
-local spring = require(replicatedStorage.SharedClasses.Spring)
 
 local cameraController = {}
 cameraController.__index = cameraController
@@ -24,59 +22,6 @@ local headBobController = require(script.HeadBob)
 local cameraEffectsPriority = Enum.RenderPriority.Camera.Value + 1
 local ragdollCameraPriority = Enum.RenderPriority.Last.Value
 local ragdollTransitionDurationSeconds = 0.25
-
-local function configureSpring(activeSpring, springConfig)
-	activeSpring.mass = springConfig.mass or 5
-	activeSpring.force = springConfig.force or 50
-	activeSpring.damping = springConfig.damping or 4
-	activeSpring.speed = springConfig.speed or 4
-end
-
-local function resetSpring(activeSpring)
-	activeSpring.target = Vector3.zero
-	activeSpring.position = Vector3.zero
-	activeSpring.velocity = Vector3.zero
-end
-
-local function randomizeVector3(baseVector: Vector3, maximumVariation: Vector3, randomGenerator: Random): Vector3
-	return Vector3.new(
-		baseVector.X + randomGenerator:NextNumber(-maximumVariation.X, maximumVariation.X),
-		baseVector.Y + randomGenerator:NextNumber(-maximumVariation.Y, maximumVariation.Y),
-		baseVector.Z + randomGenerator:NextNumber(-maximumVariation.Z, maximumVariation.Z)
-	)
-end
-
-function cameraController:computeRecoilOffset(deltaTime: number): (CFrame, number)
-	local recoilSpring = self.recoilSpring
-	local settledPitchIncrementRadians = 0
-
-	for _, impulse in clientData.cameraRecoilImpulses do
-		local recoilConfig = impulse.config
-		configureSpring(recoilSpring, recoilConfig.spring or {})
-
-		local recoilMultiplier = impulse.isAiming and (recoilConfig.aimingMultiplier or 1) or 1
-		local rotationVelocityRadians = recoilConfig.rotationVelocityRadians or Vector3.zero
-		local rotationVelocityVariationRadians = recoilConfig.rotationVelocityVariationRadians or Vector3.zero
-		local rotationVelocity = randomizeVector3(
-			rotationVelocityRadians,
-			rotationVelocityVariationRadians,
-			self.recoilRandom
-		) * recoilMultiplier
-		local pitchIncrementRadians = recoilConfig.settledPitchIncrementRadians or 0
-		local pitchVariationRadians = recoilConfig.settledPitchVariationRadians or 0
-		settledPitchIncrementRadians += (pitchIncrementRadians + self.recoilRandom:NextNumber(
-			-pitchVariationRadians,
-			pitchVariationRadians
-		)) * recoilMultiplier
-
-		recoilSpring:shove(rotationVelocity)
-	end
-
-	table.clear(clientData.cameraRecoilImpulses)
-
-	local rotationRadians = recoilSpring:update(deltaTime)
-	return CFrame.Angles(rotationRadians.X, rotationRadians.Y, rotationRadians.Z), settledPitchIncrementRadians
-end
 
 function cameraController:applyRagdollCamera(deltaTime: number)
 	local camera = workspace.CurrentCamera
@@ -121,7 +66,6 @@ function cameraController:init()
 	controllers.headBob = headBobController.new()
 
 	table.clear(clientData.cameraLocks)
-	table.clear(clientData.cameraRecoilImpulses)
 
 	local lastAppliedOffset = CFrame.identity
 	local lockedCameraRotation = nil
@@ -139,8 +83,6 @@ function cameraController:init()
 			lastAppliedOffset = CFrame.identity
 			lockedCameraRotation = nil
 			lockedBaseCFrame = nil
-			table.clear(clientData.cameraRecoilImpulses)
-			resetSpring(self.recoilSpring)
 			return
 		end
 
@@ -163,22 +105,9 @@ function cameraController:init()
 		baseCFrame = baseCFrame * tiltOffset
 
 		local headBobOffset = controllers.headBob:computeOffset(deltaTime)
-		local recoilOffset, settledPitchIncrementRadians = self:computeRecoilOffset(deltaTime)
-		if settledPitchIncrementRadians ~= 0 then
-			local settledPitchOffset = CFrame.Angles(settledPitchIncrementRadians, 0, 0)
-			baseCFrame *= settledPitchOffset
+		lastAppliedOffset = headBobOffset
 
-			if lockedCameraRotation ~= nil then
-				lockedCameraRotation *= settledPitchOffset
-			end
-			if lockedBaseCFrame ~= nil then
-				lockedBaseCFrame *= settledPitchOffset
-			end
-		end
-
-		lastAppliedOffset = recoilOffset * headBobOffset
-
-		camera.CFrame = baseCFrame * recoilOffset * headBobOffset
+		camera.CFrame = baseCFrame * headBobOffset
 	end)
 
 	runService:BindToRenderStep("ragdollCamera", ragdollCameraPriority, function(deltaTime: number)
@@ -191,8 +120,6 @@ function cameraController.new()
 
 	self.controllers = {}
 	self.__vars = table.clone(cameraController.__vars)
-	self.recoilSpring = spring.new(Vector3.zero)
-	self.recoilRandom = Random.new()
 
 	task.defer(self.init, self)
 
@@ -213,9 +140,6 @@ function cameraController:destroy()
 		controllers[controllerName] = nil
 	end
 
-	table.clear(clientData.cameraRecoilImpulses)
-	self.recoilSpring = nil
-	self.recoilRandom = nil
 	self.__vars = nil
 	setmetatable(self, nil)
 end

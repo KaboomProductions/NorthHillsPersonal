@@ -1,12 +1,11 @@
-local userInputService = game:GetService("UserInputService")
 local replicatedFirst = game:GetService("ReplicatedFirst")
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 
-local inputHelpers = require(replicatedFirst.ClientUtilities.InputHelpers)
+local inputBindings = require(replicatedFirst.ClientUtilities.InputBindings)
+local keybinds = require(replicatedStorage.SharedAssets.Keybinds)
 local rayCastingUtilities = require(replicatedFirst.ClientUtilities.RayCasting)
-local inputActionService = require(replicatedStorage.SharedUtilities.InputActionService)
 local mouseController = require(replicatedFirst.ClientControllers.Player.Interface.Mouse)
 
 local config = require(script.Config)
@@ -159,29 +158,19 @@ function positionController:init()
 		self:onRenderStepped(deltaTime)
 	end)
 
-	self.perspectiveBind = inputActionService.new("togglePerspective", Enum.InputActionType.Bool)
-	inputHelpers.attachAllKeysToInput(self.perspectiveBind, config.toggleKeys)
-	inputHelpers.wireMobileButton(self.perspectiveBind, mobileFrame.TogglePerspective, "TogglePerspective", true)
+	self.perspectiveBind = inputBindings.create(keybinds.togglePerspective, {
+		button = mobileFrame.TogglePerspective,
+		mobileName = "TogglePerspective",
+	})
 
-	self.connections.onPerspectiveBind = self.perspectiveBind.Activated:Connect(
+	self.connections.onPerspectiveBind = inputBindings.connect(
+		self.perspectiveBind,
 		function(_active: Vector2 | Vector3 | boolean | number, pressed: boolean)
-			if not pressed then
+			if not pressed or player:GetAttribute("InMenu") then
 				return
 			end
 
 			self:onToggleViewInput()
-		end
-	)
-
-	self.connections.onConsoleInput = userInputService.InputBegan:Connect(
-		function(input: InputObject, gameProcessed: boolean)
-			if not gameProcessed then
-				return
-			end
-
-			if input.KeyCode == Enum.KeyCode.ButtonR3 then
-				self:onToggleViewInput(nil, Enum.UserInputState.Begin, nil)
-			end
 		end
 	)
 
@@ -217,9 +206,7 @@ function positionController:destroy()
 
 	local connections = self.connections
 	for connectionName, connection in pairs(connections) do
-		if typeof(connection) == "RBXScriptConnection" then
-			connection:Disconnect()
-		end
+		connection:Disconnect()
 
 		connections[connectionName] = nil
 	end

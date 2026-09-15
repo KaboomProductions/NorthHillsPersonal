@@ -29,6 +29,7 @@ type UnequipDetails = {
 }
 
 export type ToolController = {
+	activationButton: GuiButton?,
 	activate: ((self: ToolController, activation: ToolActivation) -> ())?,
 	deactivate: ((self: ToolController, activation: ToolActivation) -> ())?,
 	equip: ((self: ToolController, details: EquipDetails?) -> ())?,

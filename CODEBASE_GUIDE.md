@@ -2,6 +2,22 @@
 
 Audit date: 2026-09-15. This describes the supplied source snapshot, not a verified published game. Read [REFACTOR_PLAN.md](REFACTOR_PLAN.md) for defects, priorities, and migration work. No production code was changed during this audit.
 
+## Keybind and gun-removal update
+
+The keybind plan has now been implemented; historical audit counts below describe the earlier snapshot. All in-scope application keybinds use the existing `SharedUtilities/InputActionService` through `ReplicatedFirst/ClientUtilities/InputBindings`. Prompts are explicitly excluded by the user, and keep their existing native handling. Shop, AI, and vendor controls retain their existing boundaries.
+
+Keybind defaults live only in `ReplicatedStorage/SharedAssets/Keybinds.luau`. To add or change a keybind, update its typed action there, create it with `InputBindings.create` in its owning feature, subscribe through `InputBindings.connect`, and destroy it during teardown. Use the binding's state instead of `IsKeyDown`; do not register application shortcuts through UIS, CAS, or CAU. GUI action buttons use `SetUIButton`. UIS remains for pointer/device/focus observation and generic widget mechanics. Focus cancellation and action replacement release accepted inputs and dispose subscriptions. Each action name has one owner; slider instances share one set of actions.
+
+Pointer/trigger activation is outside the keybind catalog. `Inventory/Input/ToolInput` owns one InputActionService action for all equipped tools: mouse left button, gamepad R2, and the current tool's mobile button. Press/release charges and releases melee; pressing toggles flashlight/lantern. Tool controllers expose their mobile button and implement tool behavior without registering input actions. `Results` owns its dismissal action for mouse/touch, R2, and the gamepad confirm button. Its higher-priority context consumes those inputs, and tool activation stays blocked while results are visible.
+
+Hotbar slots use ordered action definitions. `KeybindDisplay` derives their text from the configured physical key, and SlotButton reuses KeybindBadge.
+
+The bundled PlayerModule's `CameraModule/CameraInput` no longer binds `I`/`O` for keyboard zoom, as requested because zoom is script-controlled. Their keyboard state and zoom calculation were removed too. This also frees `I` for the IAS inventory action without an inventory-specific camera dependency. Preserve this change when updating PlayerModule.
+
+Gun code has been removed: Revolver config, client/server gun Template modules, Bullet definition, firearm types/attributes/defaults, and gun aiming/recoil/camera-relative viewmodel branches. Melee tools, flashlight/lantern, thrown projectiles, AI projectiles, general Fastcast support, and grip tracking remain. Non-code Studio gun assets are outside this source-code removal.
+
+See [KeybindPlan.md](KeybindPlan.md) for scope and validation and [Tests/README.md](Tests/README.md) for the regression commands and remaining Studio checks.
+
 ## Work-in-progress scope
 
 **Shop and AI are under active development. The user has instructed that neither be touched during refactoring.** Their descriptions are snapshot reference material, not instructions to fix, disable, complete or remove them. This includes shop-related dialogue/catalog/UI and AI-related legacy code, templates and client effects. Preserve their interfaces when changing shared code. R07 and R10 in the refactor plan are deferred until the user explicitly reopens that scope.
@@ -10,7 +26,7 @@ Audit date: 2026-09-15. This describes the supplied source snapshot, not a verif
 
 NorthHills is a Roblox multiplayer survival game. Players move through a generated environment, collect and equip items, encounter the Phil NPC, interact with doors and containers, and survive a day/night cycle with changing weather. Client code supplies camera motion, character animation, inventory UI, menu/shop presentation, audio, lighting, and haptics. Server code owns profiles, inventory mutations, NPC decisions, combat hit processing, world interactions, and round results.
 
-Some visible features are unfinished. `Systems/Shop.handleRequest` returns nil; dialogue purchase confirmation currently fabricates success without transferring money or items. Bullet and ThrownBat projectile hit callbacks are empty. Money and Survivals are initialized as session attributes rather than loaded from profiles. Treat these as current limitations, not complete game contracts.
+Some visible features are unfinished. `Systems/Shop.handleRequest` returns nil; dialogue purchase confirmation currently fabricates success without transferring money or items. ThrownBat projectile hit callbacks are empty. Money and Survivals are initialized as session attributes rather than loaded from profiles. Treat these as current limitations, not complete game contracts.
 
 ### What the checkout does and does not contain
 
@@ -179,7 +195,7 @@ Targeting discovers possible targets under configured Components folders, caches
 
 Server tool controllers validate the sender against the equipped item's owner. Melee derives charge/damage on the server and uses a hitbox against Components.Entities, calling a target's TakeDamage BindableFunction when supplied or its Humanoid. Client Melee animates/sends intent; it is not the damage authority. Delayed swing cleanup is currently unsafe (R06).
 
-Server Projectiles uses Fastcast and shared projectile definitions, broadcasting data for client cosmetics. Spit can create a server SpitPuddle and apply status damage. ThrownBat and Bullet definitions have empty hit handlers; verify feature intent before promising damage. Client projectile catch-up estimates flight position, and should be checked under latency for acceleration/age effects.
+Server Projectiles uses Fastcast and shared projectile definitions, broadcasting data for client cosmetics. Spit can create a server SpitPuddle and apply status damage. ThrownBat has an empty hit handler; verify feature intent before promising damage. Client projectile catch-up estimates flight position, and should be checked under latency for acceleration/age effects.
 
 StatusEffects supports stack/refresh/ignore/highest policies and heartbeat ticks. Bleeding, Burning and Corroding share a nonlethal damage pattern; client visuals are separate implementations by design. The server replicates creation/removal but some refresh/stack branches return without publishing changed state.
 
@@ -209,13 +225,13 @@ Shop's client UI has Buy/Repair/Sell option modules, an OptionRegistry, MainPage
 
 ### Presentation, input, and shared helpers
 
-Core/Animation loads tracks and manages healthy/injured states. ViewModel coordinates ArmMotion, GripMotion, ItemState and shoulder replication, while Camera composes Position, Tilt, HeadBob, recoil and a late ragdoll-camera binding over PlayerModule's camera. Preserve render priorities and base-offset removal when editing these systems.
+Core/Animation loads tracks and manages healthy/injured states. ViewModel coordinates ArmMotion, GripMotion, ItemState and shoulder replication, while Camera composes Position, Tilt, HeadBob and a late ragdoll-camera binding over PlayerModule's camera. Preserve render priorities and base-offset removal when editing these systems.
 
 Haptics owns an active controller, EffectPlayer, waveform/config modules and character feedback. It checks preferred input/menu state and disposes feedback on teardown. Test keyboard, touch and gamepad separately; the presence of PlayerModule touch/VR support does not prove custom inventory/QTE parity.
 
 Volumetrics supports beam/billboard/particle/trail layers with camera signals and fade tasks; LensFlare and weather classes add other render work. Reduced Effects and photosensitivity settings have real presentation consumers; preserve them when changing effects. Measure on representative devices before reducing visual complexity blindly.
 
-AudioUtils handles Sound and AudioPlayer/Wire playback, sound selection/history, emitters and equalizers. ConnectionUtils handles connection tables. BucketUtils supplies region geometry; MathUtils covers motion/math operations. InputActionService is attributed third-party code with child helpers; ContextActionUtility and MobileButton represent other input approaches. Use an existing domain input owner instead of registering another overlapping global binding.
+AudioUtils handles Sound and AudioPlayer/Wire playback, sound selection/history, emitters and equalizers. ConnectionUtils handles connection tables. BucketUtils supplies region geometry; MathUtils covers motion/math operations. InputActionService is attributed third-party code with child helpers; ContextActionUtility and MobileButton represent other input approaches. All application keybind registration goes through ClientUtilities/InputBindings and the central SharedAssets/Keybinds catalog. Keep feature ownership explicit and do not add alternate key dispatch.
 
 ## 8. Naming, organization, and error handling
 

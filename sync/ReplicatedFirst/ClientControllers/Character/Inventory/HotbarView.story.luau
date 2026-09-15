@@ -30,11 +30,20 @@ return uiLabs.CreateVideStory({
 	local registry = SlotRegistry.new()
 	local dragController = (
 		{
-			attach = function(_button: GuiObject, _source: () -> SlotRegistry.DragEntry): () -> ()
-				return function() end
-			end,
-			consumeClick = function(): boolean
-				return false
+			attach = function(
+				_self,
+				button: GuiButton,
+				_source: () -> SlotRegistry.DragEntry,
+				onActivated: (() -> ())?
+			): () -> ()
+				local connection = button.Activated:Connect(function()
+					if onActivated then
+						onActivated()
+					end
+				end)
+				return function()
+					connection:Disconnect()
+				end
 			end,
 		} :: unknown
 	) :: DragController.DragController
@@ -53,7 +62,9 @@ return uiLabs.CreateVideStory({
 	return HotbarView({
 		state = state,
 		onEquip = function(index)
-			props.controls.SelectedSlot(if state().currentSlot == index then 0 else index)
+			props.controls.SelectedSlot(
+				if state().currentSlot == index or hotbar[tostring(index)] == nil then 0 else index
+			)
 		end,
 		registry = registry,
 		dragController = dragController,

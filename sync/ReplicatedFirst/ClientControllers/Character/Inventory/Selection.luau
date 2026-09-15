@@ -73,11 +73,7 @@ function selection.new(store: InventoryStore.Store, requests: InventoryRequests.
 		end
 		local state = store.state()
 		local pending = self.pending
-		if
-			pending
-			and state.equipIntentSequence >= pending.sequence
-			and state.currentSlot == pending.slot
-		then
+		if pending and state.equipIntentSequence >= pending.sequence and state.currentSlot == pending.slot then
 			self.pending = nil
 		elseif pending == nil then
 			self:_setSelected(state.currentSlot)
@@ -146,6 +142,9 @@ function selection:setIntent(slotNumber: number?): ()
 	local requests = self.requests
 	if self.destroyed or store == nil or requests == nil or not store:isEnabled() then
 		return
+	end
+	if slotNumber ~= nil and getDescriptor(store.state(), slotNumber) == nil then
+		slotNumber = nil
 	end
 	local pending: Pending = {
 		slot = slotNumber,

@@ -1,6 +1,6 @@
 local replicatedFirst = game:GetService("ReplicatedFirst")
 local replicatedStorage = game:GetService("ReplicatedStorage")
-local userInputService = game:GetService("UserInputService")
+local inputBindings = require(replicatedFirst.ClientUtilities.InputBindings)
 local players = game:GetService("Players")
 
 local player = players.LocalPlayer
@@ -36,9 +36,15 @@ local mathUtilities = require(replicatedStorage.SharedUtilities.MathUtils)
 local guiUtilities = require(replicatedFirst.ClientUtilities.GuiUtils)
 
 local resultsController = {}
+local dismissalAction = {
+	name = "dismissResults",
+	keyCodes = { Enum.KeyCode.MouseLeftButton, Enum.KeyCode.ButtonR2, Enum.KeyCode.ButtonA },
+}
 resultsController.activeResultLabels = {}
 resultsController.lastIndex = 1
 resultsController.closeConnection = nil
+resultsController.dismissBind = nil
+resultsController.dismissButton = nil
 resultsController.__vars = {
 	statePresets = {
 		survived = {
@@ -67,13 +73,36 @@ resultsController.__vars = {
 	},
 }
 
+function resultsController.disconnectDismissal()
+	local binding = resultsController.dismissBind
+	resultsController.dismissBind = nil
+	if binding then
+		binding:Destroy()
+	end
+	resultsController.closeConnection = nil
+	if resultsController.dismissButton then
+		resultsController.dismissButton:Destroy()
+		resultsController.dismissButton = nil
+	end
+end
+
+function resultsController.createDismissButton(): TextButton
+	local button = Instance.new("TextButton")
+	button.Name = "DismissResults"
+	button.Size = UDim2.fromScale(1, 1)
+	button.BackgroundTransparency = 1
+	button.Text = ""
+	button.AutoButtonColor = false
+	button.Selectable = false
+	button.ZIndex = 0
+	button.Parent = interfaceGui
+	return button
+end
+
 function resultsController.onResultsEvent(resultInfo)
 	resultsController.lastIndex = 1
 
-	if resultsController.closeConnection then
-		resultsController.closeConnection:Disconnect()
-		resultsController.closeConnection = nil
-	end
+	resultsController.disconnectDismissal()
 
 	resultsController.latestSounds = resultInfo.survived and survivedSounds or failedSounds
 	resultsController.latestPreset = resultInfo.survived and resultsController.__vars.statePresets.survived
@@ -158,19 +187,19 @@ function resultsController.onResultsEvent(resultInfo)
 		state = true,
 	})
 
-	resultsController.closeConnection = userInputService.InputBegan:Connect(function(input, gameProcessed)
-		if
-			input.UserInputType ~= Enum.UserInputType.MouseButton1
-				and input.UserInputType ~= Enum.UserInputType.Touch
-			or gameProcessed
-		then
+	local dismissButton = resultsController.createDismissButton()
+	resultsController.dismissButton = dismissButton
+	local dismissBind = inputBindings.create(dismissalAction, {
+		button = dismissButton,
+		priority = Enum.ContextActionPriority.High.Value,
+		sink = true,
+	})
+	resultsController.dismissBind = dismissBind
+	resultsController.closeConnection = inputBindings.connect(dismissBind, function(_active: boolean, pressed: boolean)
+		if not pressed then
 			return
 		end
-
-		if resultsController.closeConnection then
-			resultsController.closeConnection:Disconnect()
-			resultsController.closeConnection = nil
-		end
+		resultsController.disconnectDismissal()
 
 		local fadeOutTween = guiUtilities.changeGuiState({
 			frame = resultsHolder,

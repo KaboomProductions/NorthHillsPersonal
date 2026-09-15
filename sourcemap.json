@@ -1780,14 +1780,6 @@
                   "filePaths": [
                     "sync/ReplicatedFirst/ClientControllers/Tools/Melee.luau"
                   ]
-                },
-                {
-                  "name": "Template",
-                  "className": "ModuleScript",
-                  "guid": "34755",
-                  "filePaths": [
-                    "sync/ReplicatedFirst/ClientControllers/Tools/Template.luau"
-                  ]
                 }
               ]
             }
@@ -1857,14 +1849,6 @@
               ]
             },
             {
-              "name": "InputHelpers",
-              "className": "ModuleScript",
-              "guid": "34763",
-              "filePaths": [
-                "sync/ReplicatedFirst/ClientUtilities/InputHelpers.luau"
-              ]
-            },
-            {
               "name": "MainController",
               "className": "ModuleScript",
               "guid": "34762",
@@ -1886,6 +1870,22 @@
               "guid": "34759",
               "filePaths": [
                 "sync/ReplicatedFirst/ClientUtilities/RayCasting.luau"
+              ]
+            },
+            {
+              "name": "InputBindings",
+              "className": "ModuleScript",
+              "guid": "2689360",
+              "filePaths": [
+                "sync/ReplicatedFirst/ClientUtilities/InputBindings.luau"
+              ]
+            },
+            {
+              "name": "KeybindDisplay",
+              "className": "ModuleScript",
+              "guid": "2689362",
+              "filePaths": [
+                "sync/ReplicatedFirst/ClientUtilities/KeybindDisplay.luau"
               ]
             }
           ]
@@ -4502,14 +4502,6 @@
                       ]
                     },
                     {
-                      "name": "Revolver",
-                      "className": "ModuleScript",
-                      "guid": "34844",
-                      "filePaths": [
-                        "sync/ReplicatedStorage/SharedAssets/Dictionaries/ItemConfigs/Revolver.luau"
-                      ]
-                    },
-                    {
                       "name": "Shovel",
                       "className": "ModuleScript",
                       "guid": "34840",
@@ -4610,14 +4602,6 @@
                   "className": "Folder",
                   "guid": "17470",
                   "children": [
-                    {
-                      "name": "Bullet",
-                      "className": "ModuleScript",
-                      "guid": "34849",
-                      "filePaths": [
-                        "sync/ReplicatedStorage/SharedAssets/Dictionaries/ProjectileDefinitions/Bullet.luau"
-                      ]
-                    },
                     {
                       "name": "Melee",
                       "className": "ModuleScript",
@@ -8360,6 +8344,14 @@
                   "guid": "81532"
                 }
               ]
+            },
+            {
+              "name": "Keybinds",
+              "className": "ModuleScript",
+              "guid": "2689358",
+              "filePaths": [
+                "sync/ReplicatedStorage/SharedAssets/Keybinds.luau"
+              ]
             }
           ]
         },
@@ -9397,14 +9389,6 @@
                   "guid": "35093",
                   "filePaths": [
                     "sync/ServerScriptService/Controllers/Tools/Melee.luau"
-                  ]
-                },
-                {
-                  "name": "Template",
-                  "className": "ModuleScript",
-                  "guid": "35095",
-                  "filePaths": [
-                    "sync/ServerScriptService/Controllers/Tools/Template.luau"
                   ]
                 }
               ]
@@ -257154,6 +257138,93 @@
                           "name": "TouchInterest",
                           "className": "TouchTransmitter",
                           "guid": "95785"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "EncryptedCodeA's hats",
+              "className": "Folder",
+              "children": [
+                {
+                  "name": "Accessory (geometry_0.019Accessory)",
+                  "className": "Folder",
+                  "children": [
+                    {
+                      "name": "ThumbnailConfiguration",
+                      "className": "Folder",
+                      "children": [
+                        {
+                          "name": "ThumbnailCameraTarget",
+                          "className": "ObjectValue",
+                          "guid": "689959"
+                        },
+                        {
+                          "name": "ThumbnailCameraValue",
+                          "className": "CFrameValue",
+                          "guid": "689957"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Handle",
+                      "className": "Part",
+                      "guid": "689960"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "EncryptedCodeA's hats",
+              "className": "SunRaysEffect",
+              "guid": "689350",
+              "children": [
+                {
+                  "name": "Accessory (geometry_0.019Accessory)",
+                  "className": "Folder",
+                  "children": [
+                    {
+                      "name": "Handle",
+                      "className": "Part",
+                      "guid": "689960",
+                      "children": [
+                        {
+                          "name": "SpecialMesh",
+                          "className": "SpecialMesh",
+                          "guid": "689961"
+                        },
+                        {
+                          "name": "TouchInterest",
+                          "className": "TouchTransmitter",
+                          "guid": "96138"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "ThumbnailConfiguration",
+                      "className": "Configuration",
+                      "guid": "689958"
+                    }
+                  ]
+                },
+                {
+                  "name": "Accessory (geometry_0.019Accessory)",
+                  "className": "Accessory",
+                  "guid": "689955",
+                  "children": [
+                    {
+                      "name": "Handle",
+                      "className": "Part",
+                      "guid": "689960",
+                      "children": [
+                        {
+                          "name": "AvatarPartScaleType",
+                          "className": "StringValue",
+                          "guid": "689962"
                         }
                       ]
                     }

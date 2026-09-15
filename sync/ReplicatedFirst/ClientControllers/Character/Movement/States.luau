@@ -2,12 +2,11 @@ local players = game:GetService("Players")
 local replicatedFirst = game:GetService("ReplicatedFirst")
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local runService = game:GetService("RunService")
-local userInputService = game:GetService("UserInputService")
 
 local clientConfig = require(replicatedFirst.ClientData.ClientConfig)
 local clientData = require(replicatedFirst.ClientData)
-local inputHelpers = require(replicatedFirst.ClientUtilities.InputHelpers)
-local inputActionService = require(replicatedStorage.SharedUtilities.InputActionService)
+local inputBindings = require(replicatedFirst.ClientUtilities.InputBindings)
+local keybinds = require(replicatedStorage.SharedAssets.Keybinds)
 local connectionUtilities = require(replicatedStorage.SharedUtilities.ConnectionUtils)
 
 local StateMachine = require(script.StateMachine)
@@ -104,16 +103,8 @@ function stateController:syncHeldInputs()
 		return
 	end
 
-	local sprintKeys = clientConfig.input.keyCodes.sprinting
-
-	for _, keyCode in sprintKeys do
-		if userInputService:IsKeyDown(keyCode) then
-			character:SetAttribute("HoldingSprint", true)
-			return
-		end
-	end
-
-	character:SetAttribute("HoldingSprint", false)
+	local isHeld = self.sprintBind ~= nil and self.sprintBind:GetState() == true and not inputBindings.isTextFocused()
+	character:SetAttribute("HoldingSprint", isHeld)
 end
 
 function stateController:getMovementDirection(): string?
@@ -262,6 +253,15 @@ function stateController:init()
 
 	self.stateMachine = stateMachine
 
+	self.sprintBind = inputBindings.create(keybinds.sprint, {
+		button = mobileFrame.Sprint,
+		mobileName = "Sprint",
+	})
+	self.crouchBind = inputBindings.create(keybinds.crouch, {
+		button = mobileFrame.Crouch,
+		mobileName = "Crouch",
+	})
+
 	self:bindCharacter(self.character)
 
 	self.connections.characterAdded = player.CharacterAdded:Connect(function(character: Model)
@@ -275,21 +275,15 @@ function stateController:init()
 		self:update(deltaTime)
 	end)
 
-	self.sprintBind = inputActionService.new("sprint", Enum.InputActionType.Bool)
-	inputHelpers.attachAllKeysToInput(self.sprintBind, clientConfig.input.keyCodes.sprinting)
-	inputHelpers.wireMobileButton(self.sprintBind, mobileFrame.Sprint, "Sprint", true)
-
-	self.crouchBind = inputActionService.new("crouch", Enum.InputActionType.Bool)
-	inputHelpers.attachAllKeysToInput(self.crouchBind, clientConfig.input.keyCodes.crouching)
-	inputHelpers.wireMobileButton(self.crouchBind, mobileFrame.Crouch, "Crouch", true)
-
-	self.connections.onSprintBind = self.sprintBind.Activated:Connect(
+	self.connections.onSprintBind = inputBindings.connect(
+		self.sprintBind,
 		function(active: Vector2 | Vector3 | boolean | number, pressed: boolean?)
 			self:onSprintInputStateChanged(active, pressed)
 		end
 	)
 
-	self.connections.onCrouchBind = self.crouchBind.Activated:Connect(
+	self.connections.onCrouchBind = inputBindings.connect(
+		self.crouchBind,
 		function(active: Vector2 | Vector3 | boolean | number, pressed: boolean?)
 			self:onCrouchInputStateChanged(active, pressed)
 		end

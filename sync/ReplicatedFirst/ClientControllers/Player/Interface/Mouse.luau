@@ -1,3 +1,5 @@
+local replicatedFirst = game:GetService("ReplicatedFirst")
+local replicatedStorage = game:GetService("ReplicatedStorage")
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local userInputService = game:GetService("UserInputService")
@@ -5,7 +7,8 @@ local userInputService = game:GetService("UserInputService")
 local crosshairController = require(script.Crosshair)
 
 local player = players.LocalPlayer
-local toggleLockKey = Enum.KeyCode.Z
+local inputBindings = require(replicatedFirst.ClientUtilities.InputBindings)
+local keybinds = require(replicatedStorage.SharedAssets.Keybinds)
 local defaultMouseBehavior = Enum.MouseBehavior.LockCenter
 local defaultCursorIcon = ""
 local unlockedCursorIcon = "rbxassetid://12389204093"
@@ -169,8 +172,8 @@ function mouseController:onMenuStateChanged()
 	self:applyInputState()
 end
 
-function mouseController:onInputBegan(input: InputObject, wasProcessed: boolean)
-	if wasProcessed or self.__vars.isMenuActive or input.KeyCode ~= toggleLockKey then
+function mouseController:onToggleLock(pressed: boolean)
+	if not pressed or self.__vars.isMenuActive then
 		return
 	end
 
@@ -215,9 +218,11 @@ function mouseController:init()
 	self.connections.menuStateChanged = player:GetAttributeChangedSignal("InMenu"):Connect(function()
 		self:onMenuStateChanged()
 	end)
-	self.connections.inputBegan = userInputService.InputBegan:Connect(
-		function(input: InputObject, wasProcessed: boolean)
-			self:onInputBegan(input, wasProcessed)
+	self.toggleLockBind = inputBindings.create(keybinds.toggleMouseLock)
+	self.connections.toggleLock = inputBindings.connect(
+		self.toggleLockBind,
+		function(_active: boolean, pressed: boolean)
+			self:onToggleLock(pressed)
 		end
 	)
 	self.connections.renderStepped = runService.RenderStepped:Connect(function(deltaTime: number)
@@ -252,6 +257,9 @@ function mouseController:destroy()
 	end
 
 	activeController = nil
+	if self.toggleLockBind then
+		self.toggleLockBind:Destroy()
+	end
 	for _, connection in pairs(self.connections) do
 		connection:Disconnect()
 	end

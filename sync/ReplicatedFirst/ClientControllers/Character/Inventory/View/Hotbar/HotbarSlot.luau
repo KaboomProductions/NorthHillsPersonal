@@ -77,17 +77,13 @@ return function(itemSource: ItemSource, index: number, props: Props)
 		end,
 		size = props.size,
 		layoutOrder = index,
-		onActivated = function()
-			if props.dragController:consumeClick() then
-				return
-			end
-			if entry().descriptor and props.state().enabled then
-				props.onEquip(index)
-			end
-		end,
 		registerDragHandle = function(button: GuiObject): () -> ()
 			local unregister = props.registry:register(protocol.Zones.hotbar, index, button, dragEntry)
-			local cleanupDrag = props.dragController:attach(button, dragEntry)
+			local cleanupDrag = props.dragController:attach(button :: GuiButton, dragEntry, function()
+				if props.state().enabled then
+					props.onEquip(index)
+				end
+			end)
 			return function()
 				unregister()
 				cleanupDrag()

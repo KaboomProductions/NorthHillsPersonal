@@ -1,8 +1,6 @@
 local players = game:GetService("Players")
-local replicatedStorage = game:GetService("ReplicatedStorage")
 local runService = game:GetService("RunService")
 
-local spring = require(replicatedStorage.SharedClasses.Spring)
 local armMotion = require(script.ArmMotion)
 local characterReplicationController = require(script.Parent.CharacterReplication)
 local config = require(script.Config)
@@ -35,16 +33,6 @@ viewModelController.__vars = {
 	leftArmSupportFollowsRightArm = nil,
 	itemRightArmConfig = nil,
 	isCoupledArms = false,
-
-	isCameraRelative = false,
-	cameraRelativeAim = false,
-	cameraRelativeLookDown = nil,
-	cameraRelativeLookUp = nil,
-	aimConfig = nil,
-	isAiming = false,
-	aimAlpha = 0,
-	recoilConfig = nil,
-	pendingRecoilCount = 0,
 }
 
 export type ShoulderState = {
@@ -166,9 +154,6 @@ function viewModelController.new()
 	self.replication = characterReplicationController.getShared()
 	self.shoulders = nil
 	self.gripState = nil
-	self.recoilPositionSpring = spring.new(Vector3.zero)
-	self.recoilRotationSpring = spring.new(Vector3.zero)
-	self.recoilRandom = Random.new()
 
 	task.defer(self.init, self)
 
@@ -193,9 +178,6 @@ function viewModelController:destroy()
 	self.gripState = nil
 	self.heldItem = nil
 	self.itemHandle = nil
-	self.recoilPositionSpring = nil
-	self.recoilRotationSpring = nil
-	self.recoilRandom = nil
 	self.config = nil
 	setmetatable(self, nil)
 end

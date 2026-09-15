@@ -2,34 +2,13 @@ local gripMotion = require(script.Parent.GripMotion)
 local replication = require(script.Parent.Replication)
 
 local replicatedStorage = game:GetService("ReplicatedStorage")
-local replicatedFirst = game:GetService("ReplicatedFirst")
 local attributes = require(replicatedStorage.SharedAssets.Attributes)
 local itemUtils = require(replicatedStorage.SharedUtilities.ItemUtils)
-local clientData = require(replicatedFirst.ClientData)
 
 local itemState = {}
 local equippedItemTag = "EquippedItem"
 local equippedToolAttribute = attributes.tool.equipped
-local aimingToolAttribute = attributes.tool.aiming
-local recoilSequenceToolAttribute = attributes.tool.recoilSequence
 local armFollowDelaySeconds = 0.25
-
-local function resetSpring(activeSpring)
-	activeSpring.target = Vector3.zero
-	activeSpring.position = Vector3.zero
-	activeSpring.velocity = Vector3.zero
-end
-
-local function resetRecoilState(controller)
-	controller.__vars.pendingRecoilCount = 0
-	resetSpring(controller.recoilPositionSpring)
-	resetSpring(controller.recoilRotationSpring)
-end
-
-local function setAimingState(controller, isAiming: boolean)
-	controller.__vars.isAiming = isAiming
-	clientData.isAiming = isAiming
-end
 
 local function getItemConfig(item: Instance?): { [string]: any }?
 	if item == nil then
@@ -67,12 +46,6 @@ local function applyItemViewModelConfig(controller, item: Instance?, itemConfig:
 	stateValues.leftArmSupportFollowsRightArm = nil
 	stateValues.itemRightArmConfig = nil
 	stateValues.isCoupledArms = false
-	stateValues.isCameraRelative = false
-	stateValues.cameraRelativeAim = false
-	stateValues.cameraRelativeLookDown = nil
-	stateValues.cameraRelativeLookUp = nil
-	stateValues.aimConfig = nil
-	stateValues.recoilConfig = nil
 
 	if item == nil then
 		return
@@ -85,12 +58,6 @@ local function applyItemViewModelConfig(controller, item: Instance?, itemConfig:
 	end
 
 	stateValues.isCoupledArms = viewModelConfig.coupledArms == true
-	stateValues.isCameraRelative = viewModelConfig.cameraRelative == true
-	stateValues.cameraRelativeAim = viewModelConfig.cameraRelativeAim == true
-	stateValues.cameraRelativeLookDown = viewModelConfig.cameraRelativeLookDown
-	stateValues.cameraRelativeLookUp = viewModelConfig.cameraRelativeLookUp
-	stateValues.aimConfig = viewModelConfig.aim
-	stateValues.recoilConfig = viewModelConfig.recoil
 
 	local leftArmSupportConfig = viewModelConfig.leftArmSupport
 	if leftArmSupportConfig then
@@ -126,30 +93,6 @@ local function disconnectItemEquippedConnection(controller)
 
 	itemEquippedConnection:Disconnect()
 	connections.itemEquipped = nil
-end
-
-local function disconnectItemAimingConnection(controller)
-	local connections = controller.connections
-	local itemAimingConnection = connections.itemAiming
-
-	if itemAimingConnection == nil then
-		return
-	end
-
-	itemAimingConnection:Disconnect()
-	connections.itemAiming = nil
-end
-
-local function disconnectItemRecoilConnection(controller)
-	local connections = controller.connections
-	local itemRecoilConnection = connections.itemRecoil
-
-	if itemRecoilConnection == nil then
-		return
-	end
-
-	itemRecoilConnection:Disconnect()
-	connections.itemRecoil = nil
 end
 
 local function cancelPendingArmFollowDelay(controller)
@@ -220,16 +163,6 @@ function itemState.resetItemState(controller)
 	stateValues.leftArmSupportFollowsRightArm = nil
 	stateValues.itemRightArmConfig = nil
 	stateValues.isCoupledArms = false
-	stateValues.isCameraRelative = false
-	stateValues.cameraRelativeAim = false
-	stateValues.cameraRelativeLookDown = nil
-	stateValues.cameraRelativeLookUp = nil
-	stateValues.aimConfig = nil
-	setAimingState(controller, false)
-	stateValues.aimAlpha = 0
-	stateValues.recoilConfig = nil
-	resetRecoilState(controller)
-	clientData.fieldOfViewModifiers.aiming = nil
 
 	controller.itemHandle = nil
 	gripMotion.resetGripState(controller)
@@ -246,10 +179,6 @@ function itemState.suspendHeldItemViewModel(controller)
 	stateValues.shouldReturnGrip = true
 	stateValues.armFollowEnableTime = 0
 	stateValues.armFollowBlend = 0
-	setAimingState(controller, false)
-	stateValues.aimAlpha = 0
-	resetRecoilState(controller)
-	clientData.fieldOfViewModifiers.aiming = nil
 
 	gripMotion.resetGripState(controller)
 	replication.sendDefaultShoulders(controller)
@@ -268,12 +197,10 @@ function itemState.applyHeldItemConfig(controller, item: Instance?)
 	local wasLeftArmSupportEnabled = stateValues.isLeftArmSupportEnabled
 	local wasHandFollowEnabled = stateValues.isHandFollowEnabled
 	local nextArmFollowEnabled, nextLeftArmSupportEnabled, nextHandFollowEnabled = getViewModelFlags(itemConfig)
-	local viewModelConfig = itemConfig and itemConfig.viewModel
-	local isCameraRelative = viewModelConfig and viewModelConfig.cameraRelative == true
 	local isEquipped = item:GetAttribute(equippedToolAttribute) == true
-	local shouldEnableArmFollow = isEquipped and (isCameraRelative or controller.armFollowReadyItem == item)
+	local shouldEnableArmFollow = isEquipped and controller.armFollowReadyItem == item
 
-	if isEquipped and not isCameraRelative then
+	if isEquipped then
 		scheduleArmFollowDelay(controller, item, nextArmFollowEnabled)
 	else
 		cancelPendingArmFollowDelay(controller)
@@ -313,13 +240,9 @@ function itemState.setHeldItem(controller, item: Instance?)
 
 	disconnectItemChildConnection(controller)
 	disconnectItemEquippedConnection(controller)
-	disconnectItemAimingConnection(controller)
-	disconnectItemRecoilConnection(controller)
 	cancelPendingArmFollowDelay(controller)
-	resetRecoilState(controller)
 
 	controller.heldItem = item
-	setAimingState(controller, false)
 
 	if item == nil then
 		itemState.applyHeldItemConfig(controller, nil)
@@ -346,29 +269,6 @@ function itemState.setHeldItem(controller, item: Instance?)
 		end
 
 		itemState.applyHeldItemConfig(controller, item)
-	end)
-
-	controller.connections.itemAiming = item:GetAttributeChangedSignal(aimingToolAttribute):Connect(function()
-		if controller.heldItem ~= item then
-			return
-		end
-
-		setAimingState(controller, item:GetAttribute(aimingToolAttribute) == true)
-	end)
-	setAimingState(controller, item:GetAttribute(aimingToolAttribute) == true)
-
-	controller.connections.itemRecoil = item:GetAttributeChangedSignal(recoilSequenceToolAttribute):Connect(function()
-		local recoilConfig = controller.__vars.recoilConfig
-		if controller.heldItem ~= item or recoilConfig == nil or item:GetAttribute(equippedToolAttribute) ~= true then
-			return
-		end
-
-		controller.__vars.pendingRecoilCount += 1
-
-		local cameraRecoilConfig = recoilConfig.camera
-		if cameraRecoilConfig ~= nil then
-			clientData.queueCameraRecoil(cameraRecoilConfig, controller.__vars.isAiming)
-		end
 	end)
 
 	if item:GetAttribute(equippedToolAttribute) == false then

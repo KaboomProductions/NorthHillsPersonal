@@ -48,8 +48,14 @@ function inventoryController.new(): Controller?
 	self.throwFlow = ThrowFlow.new(self.requests, self.store)
 	self.toolHost = ToolControllerHost.new(self.store, self.selection)
 	self.view = View.new(self.store, self.requests, self.selection, self.throwFlow)
-	self.keybinds = Keybinds.new(self.store, self.requests, self.selection, self.view, self.throwFlow)
-	self.toolInput = ToolInput.new(self.store, self.toolHost, self.selection)
+	self.keybinds = Keybinds.new({
+		store = self.store,
+		requests = self.requests,
+		selection = self.selection,
+		view = self.view,
+		throwFlow = self.throwFlow,
+	})
+	self.toolInput = ToolInput.new({ store = self.store, toolHost = self.toolHost, selection = self.selection })
 	self.destroyed = false
 	return self
 end

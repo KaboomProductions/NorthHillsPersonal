@@ -42,9 +42,6 @@ return uiLabs.CreateVideStory({
 			attach = function(_button: GuiObject, _source: () -> SlotRegistry.DragEntry): () -> ()
 				return function() end
 			end,
-			consumeClick = function(): boolean
-				return false
-			end,
 		} :: unknown
 	) :: DragController.DragController
 	local function emptyResponse(): protocol.InventoryResponse?

@@ -10,8 +10,6 @@ local sharedUtilities = replicatedStorage.SharedUtilities
 local clientUtilities = replicatedFirst.ClientUtilities
 
 local animationUtilities = require(sharedUtilities.Animation)
-local inputActionService = require(sharedUtilities.InputActionService)
-local inputHelpers = require(clientUtilities.InputHelpers)
 local guiUtilities = require(clientUtilities.GuiUtils)
 local mathUtilities = require(sharedUtilities.MathUtils)
 local mouseController = require(replicatedFirst.ClientControllers.Player.Interface.Mouse)
@@ -75,6 +73,8 @@ function meleeController:preload()
 	self.mainRemote = self.tool:WaitForChild("MainRemote", 3)
 	self.interface = player.PlayerGui:WaitForChild("Interface", 3)
 	self.mobileFrame = self.interface.Mobile
+	self.activationButton = self.mobileFrame.ActivateMelee
+	self.activationButton.Visible = false
 	self.meleeChargeBar = self.interface:WaitForChild("MeleeChargeBar")
 
 	if not self.meleeChargeBar.Visible then
@@ -419,7 +419,6 @@ function meleeController.new(tool: Tool, meleeConfig: MeleeConfig)
 
 	self.animationTransitionVersion = 0
 	self.lerpedChargeAverage = 0
-	self.mobileActivationToggled = false
 	self.isEquipped = false
 	self.speedRecoveryId = 0
 	self.connections = {}
@@ -516,27 +515,6 @@ function meleeController:deactivate(deactivationDetails: {
 	end
 end
 
-function meleeController:connectActivation()
-	if self.activationBind then
-		return
-	end
-
-	self.activationBind = inputActionService.new("toggleActivationMelee", Enum.InputActionType.Bool)
-	inputHelpers.wireMobileButton(self.activationBind, self.mobileFrame.ActivateMelee, "MeleeActivate")
-	self.activationBind.Activated:Connect(function(_active: Vector2 | Vector3 | boolean | number, pressed: boolean)
-		if not pressed then
-			return
-		end
-		if self.mobileActivationToggled then
-			self.mobileActivationToggled = false
-			self:deactivate({})
-			return
-		end
-		self.mobileActivationToggled = true
-		self:activate({})
-	end)
-end
-
 function meleeController:playIdleAfterEquip(equipTrack: AnimationTrack, transitionVersion: number)
 	equipTrack.Stopped:Once(function()
 		if self.animationTransitionVersion ~= transitionVersion or not self.isEquipped then
@@ -577,8 +555,6 @@ function meleeController:equip(equipDetails: { isSpecialEquip: boolean? }?)
 	local transitionVersion = self.animationTransitionVersion
 
 	mouseController.showCrosshairWeaponLines()
-	inputHelpers.mobileButtonHolder.setVisible("MeleeActivate", true)
-	self:connectActivation()
 
 	local equipToPlay = details.isSpecialEquip and self.tracks.specialEquip or self.tracks.equip
 	if equipToPlay then
@@ -601,13 +577,6 @@ function meleeController:unequip(unequipDetails: { isAuthoritativeSync: boolean?
 
 	mouseController.hideCrosshairWeaponLines()
 
-	inputHelpers.mobileButtonHolder.setVisible("MeleeActivate", false)
-
-	if self.activationBind then
-		self.activationBind:Destroy()
-		self.activationBind = nil
-	end
-
 	self:cleanupCharge()
 	if details.skipAnimation then
 		self.animationTransitionVersion += 1
@@ -620,17 +589,9 @@ end
 
 function meleeController:destroy()
 	self.isEquipped = false
-	self.mobileActivationToggled = false
 	self.animationTransitionVersion += 1
 
 	mouseController.hideCrosshairWeaponLines()
-
-	inputHelpers.mobileButtonHolder.setVisible("MeleeActivate", false)
-
-	if self.activationBind then
-		self.activationBind:Destroy()
-		self.activationBind = nil
-	end
 
 	self:cleanupCharge()
 	self:cancelAllTracks()

@@ -8,12 +8,9 @@ local replicatedFirst = game:GetService("ReplicatedFirst")
 local player = players.LocalPlayer
 
 local sharedUtilities = replicatedStorage.SharedUtilities
-local clientUtilities = replicatedFirst.ClientUtilities
 local sharedAssets = replicatedStorage.SharedAssets
 
 local animationUtilities = require(sharedUtilities.Animation)
-local inputActionService = require(sharedUtilities.InputActionService)
-local inputHelpers = require(clientUtilities.InputHelpers)
 local haptics = require(replicatedFirst.ClientControllers.Player.Haptics)
 local attributeConstants = require(sharedAssets.Attributes)
 local toolAttributes = attributeConstants.tool
@@ -31,6 +28,8 @@ function flashlightController:preload()
 
 	self.interface = player.PlayerGui:WaitForChild("Interface", 3)
 	self.mobileFrame = self.interface.Mobile
+	self.activationButton = self.mobileFrame.ActivateFlashlight
+	self.activationButton.Visible = false
 
 	self.mainRemote = self.tool:WaitForChild("MainRemote", 3)
 	for animationName, animationId in pairs(self.config.animations) do
@@ -133,19 +132,6 @@ function flashlightController:activate(info: { isServerReplication: boolean })
 	end
 end
 
-function flashlightController:_bindActivation()
-	if self.activationBind then
-		return
-	end
-	self.activationBind = inputActionService.new("toggleActivationFlashlight", Enum.InputActionType.Bool)
-	inputHelpers.wireMobileButton(self.activationBind, self.mobileFrame.ActivateFlashlight, "ToggleFlashlight")
-	self.activationBind.Activated:Connect(function(_active: Vector2 | Vector3 | boolean | number, pressed: boolean)
-		if pressed then
-			self:activate({})
-		end
-	end)
-end
-
 function flashlightController:playIdleAfterEquip(equipTrack: AnimationTrack, transitionVersion: number)
 	equipTrack.Stopped:Once(function()
 		if self.animationTransitionVersion ~= transitionVersion or not self.isEquipped or self.isUnequipping then
@@ -200,8 +186,6 @@ function flashlightController:equip()
 	elseif self.tracks.idle then
 		self.tracks.idle:Play(TRACK_TRANSITION_TIME_SECONDS)
 	end
-	self:_bindActivation()
-	inputHelpers.mobileButtonHolder.setVisible("ToggleFlashlight", true)
 
 	task.spawn(function()
 		task.wait(0.1)
@@ -215,11 +199,6 @@ end
 function flashlightController:interruptEquip()
 	self.isEquipped = false
 	self.isUnequipping = true
-	inputHelpers.mobileButtonHolder.setVisible("ToggleFlashlight", false)
-	if self.activationBind then
-		self.activationBind:Destroy()
-		self.activationBind = nil
-	end
 	self:beginUnequipAnimation()
 end
 
@@ -228,13 +207,6 @@ function flashlightController:unequip(info: { skipAnimation: boolean? }?)
 
 	self.isEquipped = false
 	self.isUnequipping = true
-
-	inputHelpers.mobileButtonHolder.setVisible("ToggleFlashlight", false)
-
-	if self.activationBind then
-		self.activationBind:Destroy()
-		self.activationBind = nil
-	end
 
 	if self.tool:GetAttribute(toolAttributes.toggled) then
 		self.mainRemote:FireServer("activateSilent")
@@ -255,13 +227,6 @@ function flashlightController:destroy()
 	self.isUnequipping = false
 	self.animationTransitionVersion += 1
 	self:cancelAllTracks()
-
-	inputHelpers.mobileButtonHolder.setVisible("ToggleFlashlight", false)
-
-	if self.activationBind then
-		self.activationBind:Destroy()
-		self.activationBind = nil
-	end
 
 	for connectionName, connection in pairs(self.connections) do
 		connection:Disconnect()

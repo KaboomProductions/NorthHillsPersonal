@@ -29,7 +29,6 @@ local ROTATION_SPEED_POINTERACTION = Vector2.new(1, 0.77)*math.rad(7) -- (rad/in
 local ROTATION_SPEED_TOUCH = Vector2.new(1, 0.66)*math.rad(1) -- (rad/inputdelta)
 
 local ZOOM_SPEED_MOUSE = 1 -- (scaled studs/wheel click)
-local ZOOM_SPEED_KEYS = 0.1 -- (studs/s)
 local ZOOM_SPEED_TOUCH = 0.04 -- (scaled studs/DIP %)
 
 local MIN_TOUCH_SENSITIVITY_FRACTION = 0.25 -- 25% sensitivity at 90°
@@ -148,8 +147,6 @@ do
 	local keyboardState = {
 		Left = 0,
 		Right = 0,
-		I = 0,
-		O = 0
 	}
 	local mouseState = {
 		Movement = Vector2.new(),
@@ -206,10 +203,9 @@ do
 	end
 	
 	function CameraInput.getZoomDelta(): number
-		local kKeyboard = keyboardState.O - keyboardState.I
 		local kMouse = -mouseState.Wheel + mouseState.Pinch
 		local kTouch = -touchState.Pinch
-		return kKeyboard*ZOOM_SPEED_KEYS + kMouse*ZOOM_SPEED_MOUSE + kTouch*ZOOM_SPEED_TOUCH
+		return kMouse*ZOOM_SPEED_MOUSE + kTouch*ZOOM_SPEED_TOUCH
 	end
 
 	do
@@ -427,9 +423,7 @@ do
 					false,
 					CAMERA_INPUT_PRIORITY,
 					Enum.KeyCode.Left,
-					Enum.KeyCode.Right,
-					Enum.KeyCode.I,
-					Enum.KeyCode.O
+					Enum.KeyCode.Right
 				)
 
 				if VRService.VREnabled then

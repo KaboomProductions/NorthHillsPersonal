@@ -13,6 +13,7 @@ local SlotRegistry = require(script.Parent.SlotRegistry)
 
 local dragController = {}
 dragController.__index = dragController
+local dragThresholdPixels = 8
 
 type DragSource = () -> SlotRegistry.DragEntry?
 
@@ -20,7 +21,9 @@ type DragSession = {
 	itemId: string,
 	zone: protocol.Zone,
 	index: number,
-	moved: boolean?,
+	descriptor: protocol.ItemDescriptor,
+	startPosition: Vector2,
+	moved: boolean,
 }
 
 export type DragController = {
@@ -31,14 +34,12 @@ export type DragController = {
 	session: DragSession?,
 	hovered: SlotRegistry.DragEntry?,
 	detectors: { [UIDragDetector]: DragSource },
-	suppressClick: boolean,
 	changedConnection: RBXScriptConnection?,
 	_updateDetectors: (self: DragController) -> (),
 	_begin: (self: DragController, source: DragSource, inputPosition: unknown) -> (),
 	_continue: (self: DragController, inputPosition: unknown) -> (),
-	_end: (self: DragController, inputPosition: unknown) -> (),
-	consumeClick: (self: DragController) -> boolean,
-	attach: (self: DragController, button: GuiObject, source: DragSource) -> () -> (),
+	_end: (self: DragController, inputPosition: unknown) -> boolean,
+	attach: (self: DragController, button: GuiButton, source: DragSource, onActivated: (() -> ())?) -> () -> (),
 	destroy: (self: DragController) -> (),
 }
 
@@ -74,7 +75,6 @@ function dragController.new(
 			layer = layer,
 			session = nil,
 			detectors = {},
-			suppressClick = false,
 		}, dragController) :: unknown
 	) :: DragController
 	self.changedConnection = store.changed.Event:Connect(function()
@@ -93,10 +93,11 @@ function dragController:_updateDetectors()
 	end
 	for detector, source in self.detectors do
 		local entry = source()
-		detector.Enabled = false
-		if store:isEnabled() and entry and entry.descriptor and not entry.locked then
-			detector.Enabled = true
-		end
+		detector.Enabled = store:isEnabled()
+			and entry ~= nil
+			and entry.descriptor ~= nil
+			and not entry.locked
+			and not entry.disabled
 	end
 end
 
@@ -107,7 +108,7 @@ function dragController:_begin(source: DragSource, inputPosition: unknown)
 		return
 	end
 	local entry = source()
-	if entry == nil or entry.locked or not store:isEnabled() or entry.descriptor == nil then
+	if entry == nil or entry.locked or entry.disabled or not store:isEnabled() or entry.descriptor == nil then
 		return
 	end
 	local point = pointFromInput(inputPosition)
@@ -115,9 +116,10 @@ function dragController:_begin(source: DragSource, inputPosition: unknown)
 		itemId = entry.descriptor.itemId,
 		zone = entry.zone,
 		index = entry.index,
+		descriptor = entry.descriptor,
+		startPosition = point,
+		moved = false,
 	}
-	self.suppressClick = false
-	layer:show(entry.descriptor, point)
 end
 
 function dragController:_continue(inputPosition: unknown)
@@ -128,9 +130,15 @@ function dragController:_continue(inputPosition: unknown)
 		return
 	end
 	local point = pointFromInput(inputPosition)
+	if not session.moved then
+		if (point - session.startPosition).Magnitude < dragThresholdPixels then
+			return
+		end
+		session.moved = true
+		layer:show(session.descriptor, point)
+	end
 	layer:update(point)
 	self.hovered = registry:hitTest(point)
-	session.moved = true
 	local target = self.hovered
 	if target == nil then
 		layer:setIntent(if registry:isInsideUi(point) then "CANCEL" else "DROP")
@@ -155,48 +163,45 @@ function dragController:_continue(inputPosition: unknown)
 	end
 end
 
-function dragController:_end(inputPosition: unknown)
+function dragController:_end(inputPosition: unknown): boolean
 	local session = self.session
 	self.session = nil
-	if session and session.moved then
-		self.suppressClick = true
-		task.delay(0.1, function()
-			self.suppressClick = false
-		end)
-	end
 	self.hovered = nil
 	if self.layer then
 		self.layer:hide()
 	end
 	if session == nil then
-		return
+		return false
+	end
+	local point = pointFromInput(inputPosition)
+	if not session.moved then
+		return (point - session.startPosition).Magnitude < dragThresholdPixels
 	end
 	local store = self.store
 	local registry = self.registry
 	local requests = self.requests
-	if store == nil or registry == nil or requests == nil then
-		return
+	if store == nil or registry == nil or requests == nil or not store:isEnabled() then
+		return false
 	end
 	local zone, index, descriptor = store:findItem(session.itemId)
 	if zone == nil or index == nil or descriptor == nil then
-		return
+		return false
 	end
-	local point = pointFromInput(inputPosition)
 	local target = registry:hitTest(point)
 	if registry:isInsideDropZone(point) then
 		local direction = workspace.CurrentCamera and workspace.CurrentCamera.CFrame.LookVector or Vector3.zAxis
 		requests:drop(descriptor.itemId, direction)
-		return
+		return false
 	end
 	if target then
 		if target.locked or target.disabled then
-			return
+			return false
 		end
 		if target.zone == zone and target.index == index then
-			return
+			return false
 		end
 		if not canMoveToTarget(descriptor, zone, target) then
-			return
+			return false
 		end
 		if target.descriptor and target.descriptor.itemType == descriptor.itemType then
 			requests:mergeStack(descriptor.itemId, target.descriptor.itemId)
@@ -205,21 +210,16 @@ function dragController:_end(inputPosition: unknown)
 		else
 			requests:move(descriptor.itemId, target.zone, target.index)
 		end
-		return
+		return false
 	end
 	if not registry:isInsideUi(point) then
 		local direction = workspace.CurrentCamera and workspace.CurrentCamera.CFrame.LookVector or Vector3.zAxis
 		requests:drop(descriptor.itemId, direction)
 	end
+	return false
 end
 
-function dragController:consumeClick(): boolean
-	local suppressed = self.suppressClick
-	self.suppressClick = false
-	return suppressed
-end
-
-function dragController:attach(button: GuiObject, source: DragSource): () -> ()
+function dragController:attach(button: GuiButton, source: DragSource, onActivated: (() -> ())?): () -> ()
 	local detector = Instance.new("UIDragDetector")
 	detector.Name = "DragDetector"
 	detector.DragStyle = Enum.UIDragDetectorDragStyle.TranslatePlane
@@ -235,7 +235,16 @@ function dragController:attach(button: GuiObject, source: DragSource): () -> ()
 			self:_continue(inputPosition)
 		end),
 		finish = detector.DragEnd:Connect(function(inputPosition)
-			self:_end(inputPosition)
+			local wasClick = self:_end(inputPosition)
+			if wasClick and onActivated then
+				onActivated()
+			end
+		end),
+		activate = button.Activated:Connect(function()
+			-- Drag detectors own occupied-slot gestures; empty slots use native activation.
+			if not detector.Enabled and onActivated then
+				onActivated()
+			end
 		end),
 	}
 	return function()

@@ -85,53 +85,11 @@ export type LeftArmSupportConfig = {
 	followsRightArm: boolean?,
 }
 
-export type CameraRelativeLookConfig = {
-	maximumAngleRadians: number,
-	offsetStuds: number,
-}
-
-export type AimConfig = {
-	fieldOfViewOffset: number,
-	blendDurationSeconds: number,
-}
-
-export type SpringConfig = {
-	mass: number,
-	force: number,
-	damping: number,
-	speed: number,
-}
-
-export type CameraRecoilConfig = {
-	rotationVelocityRadians: Vector3,
-	rotationVelocityVariationRadians: Vector3,
-	settledPitchIncrementRadians: number,
-	settledPitchVariationRadians: number,
-	aimingMultiplier: number,
-	spring: SpringConfig,
-}
-
-export type RecoilConfig = {
-	positionVelocity: Vector3,
-	positionVelocityVariation: Vector3,
-	rotationVelocityRadians: Vector3,
-	rotationVelocityVariationRadians: Vector3,
-	aimingMultiplier: number,
-	spring: SpringConfig,
-	camera: CameraRecoilConfig,
-}
-
 export type ViewModelConfig = {
 	armFollow: boolean?,
 	handFollow: boolean?,
 	leftArmSupportEnabled: boolean?,
 	coupledArms: boolean?,
-	cameraRelative: boolean?,
-	cameraRelativeAim: boolean?,
-	cameraRelativeLookDown: CameraRelativeLookConfig?,
-	cameraRelativeLookUp: CameraRelativeLookConfig?,
-	aim: AimConfig?,
-	recoil: RecoilConfig?,
 	rightArm: RightArmConfig?,
 	leftArmSupport: LeftArmSupportConfig?,
 }
@@ -167,13 +125,6 @@ export type BaseConfig = {
 	chargeBarTransparencyThreshold: number?,
 	heavySwingThreshold: number?,
 	storageCapacityIncrease: number?,
-	projectileObjectId: string?,
-	projectileClassId: string?,
-	projectileVelocity: number?,
-	muzzleFlashId: string?,
-	maxAmmo: number?,
-	startingReserveAmmo: number?,
-	reloadDuration: number?,
 	leftArmSupportEnabled: boolean?,
 	coupledArms: boolean?,
 	rightArm: RightArmConfig?,
@@ -208,18 +159,8 @@ export type CapacityConfig = PassiveConfig & {
 	storageCapacityIncrease: number,
 }
 
-export type GunConfig = BaseConfig & {
-	controllerClass: "Gun",
-	damage: DamageRange,
-	projectileObjectId: string,
-	projectileClassId: string,
-	maxAmmo: number,
-	startingReserveAmmo: number?,
-	holsterDurationSeconds: number?,
-}
+export type ItemConfig = MeleeConfig | FlashlightConfig | LanternConfig | CapacityConfig | PassiveConfig
 
-export type ItemConfig = MeleeConfig | FlashlightConfig | LanternConfig | GunConfig | CapacityConfig | PassiveConfig
-
-export type EquippableConfig = MeleeConfig | FlashlightConfig | LanternConfig | GunConfig
+export type EquippableConfig = MeleeConfig | FlashlightConfig | LanternConfig
 
 return table.freeze({})

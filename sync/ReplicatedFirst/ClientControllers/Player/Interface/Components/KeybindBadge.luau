@@ -1,5 +1,5 @@
---!strict
-
+local replicatedFirst = game:GetService("ReplicatedFirst")
+local keybindDisplay = require(replicatedFirst.ClientUtilities.KeybindDisplay)
 local replicatedStorage = game:GetService("ReplicatedStorage")
 
 local vide = require(replicatedStorage.ExternalLibraries.vide)
@@ -32,7 +32,7 @@ local function getText(props: Props): string
 		return ""
 	end
 
-	return if props.index == 10 then "0" else tostring(props.index)
+	return keybindDisplay.getHotbarText(props.index)
 end
 
 return function(props: Props)

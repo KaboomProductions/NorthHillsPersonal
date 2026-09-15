@@ -8,30 +8,6 @@ local clientConfig = {
 	mouseIcon = "rbxassetid://94233477129898",
 
 	input = {
-		keyCodes = {
-			sprinting = {
-				Enum.KeyCode.LeftShift,
-				Enum.KeyCode.ButtonL3,
-			},
-
-			crouching = {
-				Enum.KeyCode.LeftControl,
-				Enum.KeyCode.C,
-				Enum.KeyCode.ButtonB,
-			},
-
-			gunActivation = {
-				Enum.KeyCode.MouseLeftButton,
-			},
-
-			gunAiming = {
-				Enum.KeyCode.MouseRightButton,
-			},
-
-			gunReloading = {
-				Enum.KeyCode.R,
-			},
-		},
 
 		mobileButtons = {
 			sprinting = "rbxassetid://78730588393448",
