@@ -1849,6 +1849,22 @@
               ]
             },
             {
+              "name": "InputBindings",
+              "className": "ModuleScript",
+              "guid": "2689360",
+              "filePaths": [
+                "sync/ReplicatedFirst/ClientUtilities/InputBindings.luau"
+              ]
+            },
+            {
+              "name": "KeybindDisplay",
+              "className": "ModuleScript",
+              "guid": "2689362",
+              "filePaths": [
+                "sync/ReplicatedFirst/ClientUtilities/KeybindDisplay.luau"
+              ]
+            },
+            {
               "name": "MainController",
               "className": "ModuleScript",
               "guid": "34762",
@@ -1870,22 +1886,6 @@
               "guid": "34759",
               "filePaths": [
                 "sync/ReplicatedFirst/ClientUtilities/RayCasting.luau"
-              ]
-            },
-            {
-              "name": "InputBindings",
-              "className": "ModuleScript",
-              "guid": "2689360",
-              "filePaths": [
-                "sync/ReplicatedFirst/ClientUtilities/InputBindings.luau"
-              ]
-            },
-            {
-              "name": "KeybindDisplay",
-              "className": "ModuleScript",
-              "guid": "2689362",
-              "filePaths": [
-                "sync/ReplicatedFirst/ClientUtilities/KeybindDisplay.luau"
               ]
             }
           ]
@@ -7672,6 +7672,14 @@
               ]
             },
             {
+              "name": "Keybinds",
+              "className": "ModuleScript",
+              "guid": "2689358",
+              "filePaths": [
+                "sync/ReplicatedStorage/SharedAssets/Keybinds.luau"
+              ]
+            },
+            {
               "name": "Mapping",
               "className": "Model",
               "guid": "34505",
@@ -8343,14 +8351,6 @@
                   "className": "SoundGroup",
                   "guid": "81532"
                 }
-              ]
-            },
-            {
-              "name": "Keybinds",
-              "className": "ModuleScript",
-              "guid": "2689358",
-              "filePaths": [
-                "sync/ReplicatedStorage/SharedAssets/Keybinds.luau"
               ]
             }
           ]
@@ -20778,6 +20778,11 @@
               ]
             }
           ]
+        },
+        {
+          "name": "Camera",
+          "className": "Camera",
+          "guid": "1598415"
         },
         {
           "name": "Camp_tower",
