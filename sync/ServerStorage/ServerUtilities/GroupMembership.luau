@@ -23,12 +23,10 @@ function groupMembership.getRank(player: Player): number?
 	if cachedRank ~= nil then
 		return cachedRank
 	end
-
 	local groupRank = fetchGroupRank(player)
 	if groupRank ~= nil and player.Parent == players then
 		cachedRanksByPlayer[player] = groupRank
 	end
-
 	return groupRank
 end
 

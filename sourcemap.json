@@ -20780,32 +20780,6 @@
           ]
         },
         {
-          "name": "Camera",
-          "className": "Camera",
-          "guid": "1598415",
-          "children": [
-            {
-              "name": "CameraLight",
-              "className": "Part",
-              "guid": "1848583",
-              "children": [
-                {
-                  "name": "LightAttachment",
-                  "className": "Attachment",
-                  "guid": "1848584",
-                  "children": [
-                    {
-                      "name": "Light",
-                      "className": "SpotLight",
-                      "guid": "1848585"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
           "name": "Camp_tower",
           "className": "Model",
           "guid": "34428",
@@ -257138,93 +257112,6 @@
                           "name": "TouchInterest",
                           "className": "TouchTransmitter",
                           "guid": "95785"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "name": "EncryptedCodeA's hats",
-              "className": "Folder",
-              "children": [
-                {
-                  "name": "Accessory (geometry_0.019Accessory)",
-                  "className": "Folder",
-                  "children": [
-                    {
-                      "name": "ThumbnailConfiguration",
-                      "className": "Folder",
-                      "children": [
-                        {
-                          "name": "ThumbnailCameraTarget",
-                          "className": "ObjectValue",
-                          "guid": "689959"
-                        },
-                        {
-                          "name": "ThumbnailCameraValue",
-                          "className": "CFrameValue",
-                          "guid": "689957"
-                        }
-                      ]
-                    },
-                    {
-                      "name": "Handle",
-                      "className": "Part",
-                      "guid": "689960"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "name": "EncryptedCodeA's hats",
-              "className": "SunRaysEffect",
-              "guid": "689350",
-              "children": [
-                {
-                  "name": "Accessory (geometry_0.019Accessory)",
-                  "className": "Folder",
-                  "children": [
-                    {
-                      "name": "Handle",
-                      "className": "Part",
-                      "guid": "689960",
-                      "children": [
-                        {
-                          "name": "SpecialMesh",
-                          "className": "SpecialMesh",
-                          "guid": "689961"
-                        },
-                        {
-                          "name": "TouchInterest",
-                          "className": "TouchTransmitter",
-                          "guid": "96138"
-                        }
-                      ]
-                    },
-                    {
-                      "name": "ThumbnailConfiguration",
-                      "className": "Configuration",
-                      "guid": "689958"
-                    }
-                  ]
-                },
-                {
-                  "name": "Accessory (geometry_0.019Accessory)",
-                  "className": "Accessory",
-                  "guid": "689955",
-                  "children": [
-                    {
-                      "name": "Handle",
-                      "className": "Part",
-                      "guid": "689960",
-                      "children": [
-                        {
-                          "name": "AvatarPartScaleType",
-                          "className": "StringValue",
-                          "guid": "689962"
                         }
                       ]
                     }

@@ -13,7 +13,6 @@ export type Connection = {
 	Disconnect: (self: Connection) -> (),
 }
 
---// Read-only by convention: the store publishes a fresh state table on every change, so consumers must not mutate it.
 export type ReadOnlyState = protocol.InventoryState
 
 export type Source<T> = (() -> T) & ((value: T) -> T)
@@ -57,12 +56,14 @@ local function cloneMap(value: unknown): { [string]: protocol.ItemDescriptor }
 	if typeof(value) ~= "table" then
 		return result
 	end
+
 	local typedValue = value :: { [string]: unknown }
 	for key, descriptor in typedValue do
 		if typeof(key) == "string" and typeof(descriptor) == "table" then
 			result[key] = descriptor :: protocol.ItemDescriptor
 		end
 	end
+
 	return result
 end
 
@@ -107,7 +108,7 @@ function inventoryStore.new(): Store
 			destroyed = false,
 		}, inventoryStore) :: unknown
 	) :: Store
-	-- Type directly janked from roblox_packages/.pesde/ldgerrits_replica@1.0.3/replica/src/ReplicaClient.luau:264
+
 	self.connections.newReplica = (Replica.OnNew :: (string, (Replica) -> ()) -> Connection)(
 		"Inventory",
 		function(replica: Replica)

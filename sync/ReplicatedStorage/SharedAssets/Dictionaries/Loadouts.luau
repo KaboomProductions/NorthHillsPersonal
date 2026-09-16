@@ -1,7 +1,5 @@
 --!strict
 
---// Grants are top-ups: owned item types are skipped and material balances are raised to the listed amount.
-
 local replicatedStorage = game:GetService("ReplicatedStorage")
 
 local protocol = require(replicatedStorage.SharedUtilities.InventoryProtocol)
@@ -22,7 +20,6 @@ export type Loadout = {
 }
 
 export type Kit = Loadout & {
-	--// 0 means the pass is not on sale yet, so nobody owns it.
 	gamePassId: number,
 }
 

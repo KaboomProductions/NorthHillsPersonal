@@ -195,7 +195,7 @@ function roundCycleSystem.handleNewState()
 			currentPropsFolder.Parent = mapFolder
 		end)
 
-		remainingTimeValue.Value = musicController.getCurrentTrackLength()
+		remainingTimeValue.Value = 280 -- musicController.getCurrentTrackLength()
 	elseif currentPhase == cyclePhase.Night then
 		musicController.fadeOutCurrent()
 

@@ -241,7 +241,6 @@ function dragController:attach(button: GuiButton, source: DragSource, onActivate
 			end
 		end),
 		activate = button.Activated:Connect(function()
-			-- Drag detectors own occupied-slot gestures; empty slots use native activation.
 			if not detector.Enabled and onActivated then
 				onActivated()
 			end

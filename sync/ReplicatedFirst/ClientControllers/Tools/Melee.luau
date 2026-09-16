@@ -231,6 +231,10 @@ function meleeController:resetChargeState(keepVisual: boolean?)
 		self.connections.updateActivation:Disconnect()
 		self.connections.updateActivation = nil
 	end
+	if self.connections.chargeStartStopped then
+		self.connections.chargeStartStopped:Disconnect()
+		self.connections.chargeStartStopped = nil
+	end
 	self:stopChargeHaptics()
 
 	self.chargeStartTime = nil
@@ -441,8 +445,16 @@ function meleeController:activate(activationDetails: { isServerReplication: bool
 		self:cancelEquipTracks()
 		self:cancelSwingTracks()
 
-		self.tracks.chargeLoop:Play()
-		self.tracks.chargeStart:Play(0, 1, 1 / self.meleeConfig.chargeHoldDuration)
+		local chargeStartTrack = self.tracks.chargeStart
+		self.connections.chargeStartStopped = chargeStartTrack.Stopped:Once(function()
+			self.connections.chargeStartStopped = nil
+
+			if self.chargeStartTime ~= nil then
+				self.tracks.chargeLoop:Play()
+			end
+		end)
+
+		chargeStartTrack:Play(0.25, 1, 1 / self.meleeConfig.chargeHoldDuration)
 
 		self.chargeStartTime = os.clock()
 		self.lerpedChargeAverage = 0
