@@ -213,10 +213,10 @@ protocol.Actions = Actions
 protocol.ResponseCodes = ResponseCodes
 
 protocol.Limits = table.freeze({
-	hotbarCapacity = 10,
-	storageCapacityDefault = 20,
+	hotbarCapacity = 6,
+	storageCapacityDefault = 12,
 	storageCapacityIncrease = 5,
-	storageCapacityMaximum = 40,
+	storageCapacityMaximum = 12,
 	maximumIdentifierLength = 128,
 	maximumQueueDepth = 32,
 	remoteWaitSeconds = 10,

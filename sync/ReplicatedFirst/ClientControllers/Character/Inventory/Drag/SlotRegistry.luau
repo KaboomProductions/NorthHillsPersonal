@@ -15,6 +15,11 @@ export type DragEntry = {
 	disabled: boolean,
 }
 
+export type SlotHit = {
+	entry: DragEntry,
+	gui: GuiObject,
+}
+
 type Slot = {
 	zone: protocol.Zone,
 	index: number,
@@ -35,7 +40,9 @@ export type SlotRegistry = {
 	) -> () -> (),
 	registerContainer: (self: SlotRegistry, gui: GuiObject) -> () -> (),
 	registerDropZone: (self: SlotRegistry, gui: GuiObject) -> () -> (),
+	hitTestSlot: (self: SlotRegistry, point: Vector2) -> SlotHit?,
 	hitTest: (self: SlotRegistry, point: Vector2) -> DragEntry?,
+	findSlot: (self: SlotRegistry, zone: protocol.Zone, index: number) -> SlotHit?,
 	isInsideDropZone: (self: SlotRegistry, point: Vector2) -> boolean,
 	isInsideUi: (self: SlotRegistry, point: Vector2) -> boolean,
 	clear: (self: SlotRegistry) -> (),
@@ -108,11 +115,32 @@ function slotRegistry:registerDropZone(gui: GuiObject): () -> ()
 	end
 end
 
-function slotRegistry:hitTest(point: Vector2): DragEntry?
+function slotRegistry:hitTestSlot(point: Vector2): SlotHit?
 	for index = #self.slots, 1, -1 do
 		local entry = self.slots[index]
 		if entry.gui.Parent and isVisible(entry.gui) and inside(point, entry.gui) then
-			return entry.getEntry()
+			return {
+				entry = entry.getEntry(),
+				gui = entry.gui,
+			}
+		end
+	end
+	return nil
+end
+
+function slotRegistry:hitTest(point: Vector2): DragEntry?
+	local hit = self:hitTestSlot(point)
+	return if hit then hit.entry else nil
+end
+
+function slotRegistry:findSlot(zone: protocol.Zone, index: number): SlotHit?
+	for slotIndex = #self.slots, 1, -1 do
+		local slot = self.slots[slotIndex]
+		if slot.zone == zone and slot.index == index and slot.gui.Parent then
+			return {
+				entry = slot.getEntry(),
+				gui = slot.gui,
+			}
 		end
 	end
 	return nil

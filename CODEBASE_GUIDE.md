@@ -53,31 +53,31 @@ Read these in order, following the referenced child modules:
 
 Paths in the rest of this guide are relative to `sync/` unless prefixed otherwise. `SI` means `ServerScriptService/Systems/Inventory`; `CI` means `ReplicatedFirst/ClientControllers/Character/Inventory`. These abbreviations identify real directories, not new architectural layers.
 
-| Area | Responsibility and placement |
-| --- | --- |
-| `ReplicatedFirst/ClientControllers/Menu*` | Loading, menu camera, menu buttons, settings and player/character startup. |
-| `ReplicatedFirst/ClientControllers/Player/` | Session-level interface, shop/dialogue, haptics, ambience, replicated events, lighting, interactable presentation. |
-| `ReplicatedFirst/ClientControllers/Character/` | Respawn-level inventory, locomotion, animation, view model, camera, health/stamina presentation, entity effects. |
-| `ReplicatedFirst/ClientControllers/Tools/` | Local equipped-item animation, input feedback and sounds; paired with server tool controllers. |
-| `ReplicatedFirst/ClientData*`, `ClientUtilities/` | Mutable local coordination and client helpers. `ClientRuntime` tracks startup/controllers; `ClientData` holds movement/camera modifiers and locks. |
-| `ReplicatedStorage/Communication/` | `Networking`, `InventoryRemotes`, and a separate custom `Packet` implementation with codecs. Remote instances also exist as Studio assets. |
-| `ReplicatedStorage/SharedAssets/` | Asset hierarchy plus dictionaries: item/material configs, inventory defaults, dialogue, shop categories, projectile definitions, chase profiles, lighting schema, settings definitions. |
-| `ReplicatedStorage/SharedUtilities/` | Shared contracts and reusable operations: inventory protocol, item/material rules, animation/audio, character replication, interactable motion, input adapters, geometry and bootstrap. |
-| `ReplicatedStorage/SharedClasses/` | Springs, hitbox implementations, UI helpers, weather and bundled dependencies. Mixed application/vendor ownership. |
-| `ReplicatedStorage/ExternalLibraries/` | Vendored Vide, Replica and UI Labs; shims resolve `.pesde` source trees. |
-| `ServerScriptService/GameHandler*` | Composition root, profile adapter/template, settings creation and writes. |
-| `ServerScriptService/Controllers/` | Player/character lifecycle; tools; status effects; projectiles; remote event adapters. |
-| `ServerScriptService/Systems/` | Long-lived features: inventory, dialogue, shop, round cycle, interactables, props and sound triggers. |
-| `ServerScriptService/Foligen*` | Startup procedural vegetation generation, configuration, validation, placement and spatial sampling. |
-| `ServerStorage/ServerAssets/AI/` | Current NPC initializer, behavior/state/action/utilities, targeting, movement and pathfinding. |
-| `ServerStorage/ServerAssets/Classes/` | Server effects/physics objects: ragdoll, moving prop, spit puddle. |
-| `ServerStorage/ServerAssets/` elsewhere | ScoreTracker, PlayerMemory, dictionaries, entity templates and non-code assets. `AIOld/` is a separate legacy implementation. |
-| `ServerStorage/ItemTemplates` (Studio) | Canonical material/item model templates used by current inventory. Not a physical source directory. |
-| `ServerStorage/ServerUtilities/` | ProfileStore, AutoRig, SoundEvents, AssetPreloader. |
-| `StarterPlayer/StarterPlayerScripts/PlayerModule*` | Bundled Roblox camera/control implementation; preserve upstream provenance. |
-| `StarterPlayer/StarterCharacterScripts/` | Character startup and default-animation suppression. |
-| `Workspace/Components/Entities/Phil/Initializer.server.luau` | Direct current-Phil startup hook. |
-| `Workspace/Ignore/SoundTriggers/` | Crows/Bats config modules embedded in scene assets. |
+| Area                                                         | Responsibility and placement                                                                                                                                                            |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ReplicatedFirst/ClientControllers/Menu*`                    | Loading, menu camera, menu buttons, settings and player/character startup.                                                                                                              |
+| `ReplicatedFirst/ClientControllers/Player/`                  | Session-level interface, shop/dialogue, haptics, ambience, replicated events, lighting, interactable presentation.                                                                      |
+| `ReplicatedFirst/ClientControllers/Character/`               | Respawn-level inventory, locomotion, animation, view model, camera, health/stamina presentation, entity effects.                                                                        |
+| `ReplicatedFirst/ClientControllers/Tools/`                   | Local equipped-item animation, input feedback and sounds; paired with server tool controllers.                                                                                          |
+| `ReplicatedFirst/ClientData*`, `ClientUtilities/`            | Mutable local coordination and client helpers. `ClientRuntime` tracks startup/controllers; `ClientData` holds movement/camera modifiers and locks.                                      |
+| `ReplicatedStorage/Communication/`                           | `Networking`, `InventoryRemotes`, and a separate custom `Packet` implementation with codecs. Remote instances also exist as Studio assets.                                              |
+| `ReplicatedStorage/SharedAssets/`                            | Asset hierarchy plus dictionaries: item/material configs, inventory defaults, dialogue, shop categories, projectile definitions, chase profiles, lighting schema, settings definitions. |
+| `ReplicatedStorage/SharedUtilities/`                         | Shared contracts and reusable operations: inventory protocol, item/material rules, animation/audio, character replication, interactable motion, input adapters, geometry and bootstrap. |
+| `ReplicatedStorage/SharedClasses/`                           | Springs, hitbox implementations, UI helpers, weather and bundled dependencies. Mixed application/vendor ownership.                                                                      |
+| `ReplicatedStorage/ExternalLibraries/`                       | Vendored Vide, Replica and UI Labs; shims resolve `.pesde` source trees.                                                                                                                |
+| `ServerScriptService/GameHandler*`                           | Composition root, profile adapter/template, settings creation and writes.                                                                                                               |
+| `ServerScriptService/Controllers/`                           | Player/character lifecycle; tools; status effects; projectiles; remote event adapters.                                                                                                  |
+| `ServerScriptService/Systems/`                               | Long-lived features: inventory, dialogue, shop, round cycle, interactables, props and sound triggers.                                                                                   |
+| `ServerScriptService/Foligen*`                               | Startup procedural vegetation generation, configuration, validation, placement and spatial sampling.                                                                                    |
+| `ServerStorage/ServerAssets/AI/`                             | Current NPC initializer, behavior/state/action/utilities, targeting, movement and pathfinding.                                                                                          |
+| `ServerStorage/ServerAssets/Classes/`                        | Server effects/physics objects: ragdoll, moving prop, spit puddle.                                                                                                                      |
+| `ServerStorage/ServerAssets/` elsewhere                      | ScoreTracker, PlayerMemory, dictionaries, entity templates and non-code assets. `AIOld/` is a separate legacy implementation.                                                           |
+| `ServerStorage/ItemTemplates` (Studio)                       | Canonical material/item model templates used by current inventory. Not a physical source directory.                                                                                     |
+| `ServerStorage/ServerUtilities/`                             | ProfileStore, AutoRig, SoundEvents, AssetPreloader.                                                                                                                                     |
+| `StarterPlayer/StarterPlayerScripts/PlayerModule*`           | Bundled Roblox camera/control implementation; preserve upstream provenance.                                                                                                             |
+| `StarterPlayer/StarterCharacterScripts/`                     | Character startup and default-animation suppression.                                                                                                                                    |
+| `Workspace/Components/Entities/Phil/Initializer.server.luau` | Direct current-Phil startup hook.                                                                                                                                                       |
+| `Workspace/Ignore/SoundTriggers/`                            | Crows/Bats config modules embedded in scene assets.                                                                                                                                     |
 
 ServerStorage and ServerScriptService code is not a client data API. ReplicatedStorage code and assets are visible to clients. Keep private profile state in server-only storage and authoritative mutation entry points in server modules; shared pure policy functions can remain in ReplicatedStorage. “Shared” does not guarantee a module is pure: projectile definitions branch on execution side, and `NPCDialogue/Zara` accesses Workspace at require time.
 
@@ -127,6 +127,8 @@ The server owns a per-player `PlayerState` under `ServerStorage.InventoryPlayers
 
 `CI/Selection` adds optimistic selected-slot intent and reconciles with server `equipIntentSequence/currentSlot`, reverting after a wait limit. This is a useful distinction: local selection intent is not authoritative ownership. `CI/View` composes the replica snapshot and selection into HotbarView and InventoryPanel, and owns a separate `isOpen` source and mouse-unlock token.
 
+`CI/Drag` renders drags by lifting the slot's real item visuals (`ItemIcon`, `ItemText`, `Count`, `DurabilityBar`, listed in `Drag/DragLayer/ItemVisuals`) out of the `SlotButton` into a layer frame; nothing is cloned. Dragging is a live rearrangement: after a short dwell on a valid empty or different-type slot, `DragController` sends `move`/`swap` immediately (serialized, latest hovered slot only), so the displaced item always shifts into the slot the dragged item just vacated. Same-type stacks merge only on release; releasing elsewhere returns the item to its current slot or drops it. Because the Vide bindings stay attached, each store change is the visual handoff: the controller calls `DragLayer:relocate()` to exchange the lifted children for the item's new slot, and `finish()`/`cancel()` when the release resolves. Renaming those slot children or moving item rendering out of `SlotButton` breaks drag presentation.
+
 ### Request path
 
 ```mermaid
@@ -159,25 +161,25 @@ flowchart LR
 
 Use ItemFactory/placement/Service operations rather than directly editing client state or profile tables. Keep IDs unique and quantities conserved. A material must not become a slot item. Hotbar eligibility currently means a configured controllerClass: Move and client drag enforce it, but allocation, splitting, direct grant, hydration and replacement do not consistently do so. Add a regression across all paths when correcting this rule (R04).
 
-Current protocol bounds include hotbar 10, storage default 20/max 40, capacity step 5, item identifier length 128, remote wait 10 seconds and equip-intent future tolerance 60 seconds. Read the module before changing these; UI dimensions, saved capacities and server validation are separate consumers.
+Current protocol bounds include hotbar 10, storage default 12/max 40, capacity step 5, item identifier length 128, remote wait 10 seconds and equip-intent future tolerance 60 seconds. Read the module before changing these; UI dimensions, saved capacities and server validation are separate consumers.
 
 ## 6. Profiles, settings and other state owners
 
-| Concept | Current owner | Derived/other representations and caveats |
-| --- | --- | --- |
-| Durable player session | `GameHandler/PlayerData`, vendored ProfileStore | Store `PlayerData0`, key UserId string; Studio uses `.Mock`. Session loss clears reference and kicks. |
-| Inventory schema | `DataTemplate.Inventory`, `InventoryProtocol`, `SI/Persistence` | Version 2. Hydrator reseeds any unequal version; missing/invalid records can be skipped then overwritten. There is no explicit version migration chain. |
-| New-player loadout | `SharedAssets/Dictionaries/InventoryConfig` plus DataTemplate | Storage includes BaseballBat and Backpack; materials start at Nails 50/DuctTape 10. Empty runtime replica state is not a starter loadout. |
-| Settings definitions | `SharedAssets/PlayerSettings` | UI type, description, default, image/options. DataTemplate copies the entire definitions table into saved Settings; generated ValueObjects and later writes use scalar values. This mixed shape needs migration. |
-| Settings runtime | `GameHandler/PlayerSettings` | Player Settings category folders and Bool/Number/StringValue instances; remote transfer checks primitive type but not full allowed range/options. |
-| Item behavior/display | `SharedAssets/Dictionaries/ItemConfigs`, ItemConfigTypes, ItemUtils | `ItemType` attribute preferred, then legacy `Type`, then Name. ViewModel still calls getItemConfig; getToolConfig has no identified caller. Shop/dialogue instead load ShopCategories independently. |
-| Material metadata | `MaterialConfigs`, MaterialUtils | Nails/DuctTape also have legacy ItemConfigs; audit callers before removing the latter. |
-| Round phase/time/climate | Server `Systems/RoundCycle`, CycleConfig, Climate, replicated Values | Remote snapshots and client fallback reads repeat some fields. Some config is cached at require time; some clients read Values live. |
-| Results and money | Server ScoreTracker, Player and RoundCycle/Results | Session attributes, reset on admission; not persisted by DataTemplate. |
-| Room-visit memory | Server PlayerMemory | Mapping from Studio assets; Player periodically records room visits. Separate from saved profiles. |
-| NPC state | Current AI initializer, per-agent behavior/state machine | cachedBehavior, target registries, paths, speed and animator; ownership defects listed in R07. |
-| Status effects | Server Controllers/StatusEffects | Client definitions/presentation and StatusEffectSync are projections; stacking/refresh replication is incomplete. |
-| Local motion/UI | ClientData, ClientRuntime and controller state | Movement/FOV/camera locks, aiming and haptics. Stamina is client-owned. `InInventory`, `isInventoryOpen` and View.isOpen disagree. |
+| Concept                  | Current owner                                                        | Derived/other representations and caveats                                                                                                                                                                        |
+| ------------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Durable player session   | `GameHandler/PlayerData`, vendored ProfileStore                      | Store `PlayerData0`, key UserId string; Studio uses `.Mock`. Session loss clears reference and kicks.                                                                                                            |
+| Inventory schema         | `DataTemplate.Inventory`, `InventoryProtocol`, `SI/Persistence`      | Version 2. Hydrator reseeds any unequal version; missing/invalid records can be skipped then overwritten. There is no explicit version migration chain.                                                          |
+| New-player loadout       | `SharedAssets/Dictionaries/InventoryConfig` plus DataTemplate        | Storage includes BaseballBat and Backpack; materials start at Nails 50/DuctTape 10. Empty runtime replica state is not a starter loadout.                                                                        |
+| Settings definitions     | `SharedAssets/PlayerSettings`                                        | UI type, description, default, image/options. DataTemplate copies the entire definitions table into saved Settings; generated ValueObjects and later writes use scalar values. This mixed shape needs migration. |
+| Settings runtime         | `GameHandler/PlayerSettings`                                         | Player Settings category folders and Bool/Number/StringValue instances; remote transfer checks primitive type but not full allowed range/options.                                                                |
+| Item behavior/display    | `SharedAssets/Dictionaries/ItemConfigs`, ItemConfigTypes, ItemUtils  | `ItemType` attribute preferred, then legacy `Type`, then Name. ViewModel still calls getItemConfig; getToolConfig has no identified caller. Shop/dialogue instead load ShopCategories independently.             |
+| Material metadata        | `MaterialConfigs`, MaterialUtils                                     | Nails/DuctTape also have legacy ItemConfigs; audit callers before removing the latter.                                                                                                                           |
+| Round phase/time/climate | Server `Systems/RoundCycle`, CycleConfig, Climate, replicated Values | Remote snapshots and client fallback reads repeat some fields. Some config is cached at require time; some clients read Values live.                                                                             |
+| Results and money        | Server ScoreTracker, Player and RoundCycle/Results                   | Session attributes, reset on admission; not persisted by DataTemplate.                                                                                                                                           |
+| Room-visit memory        | Server PlayerMemory                                                  | Mapping from Studio assets; Player periodically records room visits. Separate from saved profiles.                                                                                                               |
+| NPC state                | Current AI initializer, per-agent behavior/state machine             | cachedBehavior, target registries, paths, speed and animator; ownership defects listed in R07.                                                                                                                   |
+| Status effects           | Server Controllers/StatusEffects                                     | Client definitions/presentation and StatusEffectSync are projections; stacking/refresh replication is incomplete.                                                                                                |
+| Local motion/UI          | ClientData, ClientRuntime and controller state                       | Movement/FOV/camera locks, aiming and haptics. Stamina is client-owned. `InInventory`, `isInventoryOpen` and View.isOpen disagree.                                                                               |
 
 Settings include video toggles/distortion slider, sprint/crouch Hold/Toggle choices, photosensitivity, music and SFX controls. Do not treat a client control's slider bounds as server validation. Do not treat a locally enforced stamina, movement or camera restriction as a security boundary.
 
@@ -252,17 +254,17 @@ Keep expected failures as domain results (the InventoryProtocol response model i
 
 ## 9. How to add a feature that fits
 
-| Feature | Concrete edit path and required checks |
-| --- | --- |
-| Another melee item | Add ItemConfigs entry using ItemConfigTypes, a complete Studio `ServerStorage.ItemTemplates` model and required rig/animation assets. Reuse Melee controllerClass. Check Templates validation, grant/pickup, both inventory zones, equip/unequip, charge, hit, drop, save/rejoin and respawn. Leave Shop catalog/UI unchanged under the current scope restriction. |
-| New inventory action | Extend InventoryProtocol action/payload/result validation, `SI/Requests/Router`, a narrow Actions module and `CI/Requests/InventoryRequests`. Mutate through the existing player queue/commit boundary; test stale generation, forbidden ownership, disabled state and failure after preparation. Add UI only after server behavior works. |
-| New material | Define MaterialConfigs metadata and corresponding world template; use MaterialUtils/balance grant route. Update recipes/display consumers. Test pickup conversion and ensure no material descriptor appears in hotbar/storage snapshots. |
-| Setting | Add a SharedAssets/PlayerSettings definition; extend server validation for its actual type/range/options; add the UI control and consumer with a safe default. Existing saved definition-shaped values require the R09 compatibility step. |
-| Interactable | Add a Systems/Interactables child using the actual `new({instance,prompt,promptHolder})` contract; author Class/other attributes, tags and prompt-holder assets in Studio. Validate distance/state/lock on the server, and use InteractableMotion for compatible client motion. Test destruction, streaming/reappearance and rapid activation. |
-| Status effect | Add authoritative server policy under Controllers/StatusEffects and the appropriate shared/client visual definition. Specify stacking, refresh, duration and cleanup. Test refresh without duplicate visuals and removal/reapply during a fade. |
-| Phil / AI behavior change | Out of scope while AI is in progress. Preserve current and legacy implementations, templates, client effects and shared interfaces; R07 is reference only. |
-| Session UI versus character effect | Place session UI under ClientControllers/Player and respawn-bound behavior under Character. Resolve R01 before adding another character startup hook. UI primitives belong in Player/Interface/Components with UI Labs stories. |
-| Purchase/repair/sale | Out of scope while Shop is in progress. Preserve Shop and its dialogue/catalog/UI integration; R10 is reference only. |
+| Feature                            | Concrete edit path and required checks                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Another melee item                 | Add ItemConfigs entry using ItemConfigTypes, a complete Studio `ServerStorage.ItemTemplates` model and required rig/animation assets. Reuse Melee controllerClass. Check Templates validation, grant/pickup, both inventory zones, equip/unequip, charge, hit, drop, save/rejoin and respawn. Leave Shop catalog/UI unchanged under the current scope restriction. |
+| New inventory action               | Extend InventoryProtocol action/payload/result validation, `SI/Requests/Router`, a narrow Actions module and `CI/Requests/InventoryRequests`. Mutate through the existing player queue/commit boundary; test stale generation, forbidden ownership, disabled state and failure after preparation. Add UI only after server behavior works.                         |
+| New material                       | Define MaterialConfigs metadata and corresponding world template; use MaterialUtils/balance grant route. Update recipes/display consumers. Test pickup conversion and ensure no material descriptor appears in hotbar/storage snapshots.                                                                                                                           |
+| Setting                            | Add a SharedAssets/PlayerSettings definition; extend server validation for its actual type/range/options; add the UI control and consumer with a safe default. Existing saved definition-shaped values require the R09 compatibility step.                                                                                                                         |
+| Interactable                       | Add a Systems/Interactables child using the actual `new({instance,prompt,promptHolder})` contract; author Class/other attributes, tags and prompt-holder assets in Studio. Validate distance/state/lock on the server, and use InteractableMotion for compatible client motion. Test destruction, streaming/reappearance and rapid activation.                     |
+| Status effect                      | Add authoritative server policy under Controllers/StatusEffects and the appropriate shared/client visual definition. Specify stacking, refresh, duration and cleanup. Test refresh without duplicate visuals and removal/reapply during a fade.                                                                                                                    |
+| Phil / AI behavior change          | Out of scope while AI is in progress. Preserve current and legacy implementations, templates, client effects and shared interfaces; R07 is reference only.                                                                                                                                                                                                         |
+| Session UI versus character effect | Place session UI under ClientControllers/Player and respawn-bound behavior under Character. Resolve R01 before adding another character startup hook. UI primitives belong in Player/Interface/Components with UI Labs stories.                                                                                                                                    |
+| Purchase/repair/sale               | Out of scope while Shop is in progress. Preserve Shop and its dialogue/catalog/UI integration; R10 is reference only.                                                                                                                                                                                                                                              |
 
 ## 10. Development, verification, and operation
 
@@ -279,22 +281,23 @@ Keep expected failures as domain results (the InventoryProtocol response model i
    ```
 
    Replace the placeholder with a real definition file. These commands are not currently clean gates. The PATH StyLua found during audit lacked Luau support and could misleadingly skip `.luau` during a directory scan; the installed Rokit copy supported Luau. Rokit launcher shims failed on this machine, while direct installed executables worked.
+
 4. Test in Studio with a server and at least two clients: join, ready/menu transition, movement, collect/equip/drop/throw, damage, death/respawn, NPC targeting, round completion and leave/rejoin. Repeat important flows with simulated latency. Studio ProfileStore.Mock does not prove live DataStore durability or session contention.
 5. Use a controlled staging place for real persistence/session-loss tests; never change `PlayerData0` or schema behavior casually. Publication, asset/package versioning and rollback are manual/undocumented in this snapshot.
 
 ### Audit check results
 
-| Check | Result and interpretation |
-| --- | --- |
-| Sourcemap integrity | 617 mapped source files exist. Property values and published Enabled state unavailable. |
-| Lune 0.10.5 / `@lune/luau.compile` | All 617 source files compiled; no syntax failures. Does not execute Roblox services or type-check. |
-| Second-pass actual-source probes | ProfileStore reconciliation reproduced starter-slot replenishment; Targeting/Registry returned nil for a second agent inside the shared refresh window. Pure reconciliation and mocked empty scene only, not Studio integration. |
-| Focused actual InventoryProtocol module probe | 17 scalar/boundary assertions passed, covering valid/invalid actions, ID length, slot bounds, finite numbers and selected payload rules. No engine Vector3/Instance or remote integration coverage. |
-| Selene 0.31.0 | 579 errors, 698 warnings, zero parse errors; 1,277 diagnostics across 100 files. Vendor test globals dominate undefined-variable noise. InventoryStore's type-function `types` builtin is a known false positive, not a missing runtime variable. |
-| Luau-enabled StyLua 2.5.2 | 154 files differ from default formatting. No formatting was applied. |
-| luau-lsp 1.69.0 + sourcemap + local cached Roblox definitions | 500 TypeError diagnostics and 82 other diagnostics. Definition/tool compatibility and `@self` require resolution contribute; this count is not 500 proven runtime bugs. |
-| Studio integration/build/performance | Not run: no connected Studio session or complete place artifact available. |
-| Automated app tests/CI/security package scan | No configured harness, CI, manifest or lockfile to execute. Vendor specs and UI stories are present, but no application regression suite was found. |
+| Check                                                         | Result and interpretation                                                                                                                                                                                                                         |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sourcemap integrity                                           | 617 mapped source files exist. Property values and published Enabled state unavailable.                                                                                                                                                           |
+| Lune 0.10.5 / `@lune/luau.compile`                            | All 617 source files compiled; no syntax failures. Does not execute Roblox services or type-check.                                                                                                                                                |
+| Second-pass actual-source probes                              | ProfileStore reconciliation reproduced starter-slot replenishment; Targeting/Registry returned nil for a second agent inside the shared refresh window. Pure reconciliation and mocked empty scene only, not Studio integration.                  |
+| Focused actual InventoryProtocol module probe                 | 17 scalar/boundary assertions passed, covering valid/invalid actions, ID length, slot bounds, finite numbers and selected payload rules. No engine Vector3/Instance or remote integration coverage.                                               |
+| Selene 0.31.0                                                 | 579 errors, 698 warnings, zero parse errors; 1,277 diagnostics across 100 files. Vendor test globals dominate undefined-variable noise. InventoryStore's type-function `types` builtin is a known false positive, not a missing runtime variable. |
+| Luau-enabled StyLua 2.5.2                                     | 154 files differ from default formatting. No formatting was applied.                                                                                                                                                                              |
+| luau-lsp 1.69.0 + sourcemap + local cached Roblox definitions | 500 TypeError diagnostics and 82 other diagnostics. Definition/tool compatibility and `@self` require resolution contribute; this count is not 500 proven runtime bugs.                                                                           |
+| Studio integration/build/performance                          | Not run: no connected Studio session or complete place artifact available.                                                                                                                                                                        |
+| Automated app tests/CI/security package scan                  | No configured harness, CI, manifest or lockfile to execute. Vendor specs and UI stories are present, but no application regression suite was found.                                                                                               |
 
 Audit probes/logs were temporary and are not a checked-in test harness. The refactor plan specifies permanent behavioral coverage to add before changing production logic.
 

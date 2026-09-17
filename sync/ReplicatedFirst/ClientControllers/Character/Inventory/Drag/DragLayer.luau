@@ -1,61 +1,78 @@
 --!strict
 
-local replicatedStorage = game:GetService("ReplicatedStorage")
 local runService = game:GetService("RunService")
 
-local GuiAnimator = require(replicatedStorage.SharedClasses.Interface.GuiAnimator)
+local DragGhost = require(script.DragGhost)
 
-local dragOffset = 12
 local activeScale = 1.05
-local hiddenScale = 0.75
-local springSettleDistance = 0.01
+local snappedScale = 1
+local landedDistance = 0.5
+local returnMaxSeconds = 0.6
+local confirmMaxSeconds = 1.5
+local draggedZIndex = 1000
+local swapZIndex = 999
 
-local positionSpringFrequency = 8
-local positionSpringDamping = 300
-local positionSpringMass = 25
-local positionSpringSpeed = 8
-
-local scaleSpringFrequency = 15
-local scaleSpringDamping = 100
-local scaleSpringMass = 4
-local scaleSpringSpeed = 2.3
-
-local positionSpringKey = "dragPosition"
-local positionTrackKey = "dragPositionTrack"
-local scaleSpringKey = "dragScale"
-local scaleTrackKey = "dragScaleTrack"
+type Phase = "idle" | "dragging" | "confirming" | "returning"
 
 local dragLayer = {}
 dragLayer.__index = dragLayer
 
-export type DragIntent = "CANCEL" | "DROP" | "INVALID" | "MOVE" | "MERGE" | "SWAP"
-
 export type DragLayer = {
-	frame: Frame?,
-	intentLabel: TextLabel?,
-	ghost: GuiButton?,
-	animator: any,
+	root: Frame?,
+	dragged: DragGhost.DragGhost?,
+	swap: DragGhost.DragGhost?,
 	renderConnection: RBXScriptConnection?,
-	pointerOffset: Vector2,
-	isHiding: boolean,
+	phase: Phase,
+	phaseElapsedSeconds: number,
+	isSwapReturning: boolean,
 	destroyed: boolean,
-	show: (self: DragLayer, sourceButton: GuiButton, point: Vector2) -> (),
-	update: (self: DragLayer, point: Vector2) -> (),
-	setIntent: (self: DragLayer, intent: DragIntent) -> (),
-	hide: (self: DragLayer) -> (),
+	show: (self: DragLayer, sourceButton: GuiButton) -> (),
+	update: (self: DragLayer, point: Vector2, targetButton: GuiButton?, isSwap: boolean) -> (),
+	confirm: (self: DragLayer, targetButton: GuiButton, isSwap: boolean) -> (),
+	relocate: (self: DragLayer, currentButton: GuiButton, displacedButton: GuiButton?) -> (),
+	finish: (self: DragLayer) -> (),
+	cancel: (self: DragLayer) -> (),
 	destroy: (self: DragLayer) -> (),
-	_clearGhost: (self: DragLayer) -> (),
+	_previewSwap: (self: DragLayer, targetButton: GuiButton) -> (),
+	_returnSwap: (self: DragLayer) -> (),
 	_start: (self: DragLayer) -> (),
 	_stop: (self: DragLayer) -> (),
-	_updateAnimation: (self: DragLayer, deltaTime: number) -> (),
+	_step: (self: DragLayer, deltaTime: number) -> (),
 }
 
-function dragLayer._clearGhost(self: DragLayer): ()
-	local ghost = self.ghost
-	self.ghost = nil
-	if ghost then
-		ghost:Destroy()
+local function swapStartCenter(dragged: DragGhost.DragGhost, sourceCenter: Vector2, targetCenter: Vector2): Vector2
+	local swapDelta = targetCenter - sourceCenter
+	local swapDistanceSquared = swapDelta:Dot(swapDelta)
+	if swapDistanceSquared <= 0.001 then
+		return targetCenter
 	end
+
+	local progress = math.clamp((dragged:getCenter() - sourceCenter):Dot(swapDelta) / swapDistanceSquared, 0, 1)
+	return targetCenter:Lerp(sourceCenter, progress)
+end
+
+function dragLayer.new(parent: Instance): DragLayer
+	local root = Instance.new("Frame")
+	root.Name = "InventoryDragRoot"
+	root.BackgroundTransparency = 1
+	root.BorderSizePixel = 0
+	root.Position = UDim2.fromScale(0, 0)
+	root.Size = UDim2.fromScale(1, 1)
+	root.ZIndex = 100
+	root.Parent = parent
+
+	return (
+		setmetatable({
+			root = root,
+			dragged = DragGhost.new(root, "DraggedItem", draggedZIndex),
+			swap = DragGhost.new(root, "SwappedItem", swapZIndex),
+			renderConnection = nil,
+			phase = "idle" :: Phase,
+			phaseElapsedSeconds = 0,
+			isSwapReturning = false,
+			destroyed = false,
+		}, dragLayer) :: unknown
+	) :: DragLayer
 end
 
 function dragLayer._stop(self: DragLayer): ()
@@ -68,209 +85,253 @@ function dragLayer._stop(self: DragLayer): ()
 	self.renderConnection = nil
 end
 
-function dragLayer._updateAnimation(self: DragLayer, deltaTime: number): ()
-	local animator = self.animator
-	local frame = self.frame
-	if animator == nil or frame == nil then
-		self:_stop()
-		return
-	end
-
-	animator:applyTracks(deltaTime)
-	if
-		not self.isHiding or not animator:isSpringSettled(scaleSpringKey, springSettleDistance, springSettleDistance)
-	then
-		return
-	end
-
-	frame.Visible = false
-	self.isHiding = false
-	self:_clearGhost()
-	local intentLabel = self.intentLabel
-	if intentLabel then
-		intentLabel.Visible = false
-	end
-	self:_stop()
-end
-
 function dragLayer._start(self: DragLayer): ()
 	if self.destroyed or self.renderConnection ~= nil then
 		return
 	end
 
 	self.renderConnection = runService.RenderStepped:Connect(function(deltaTime: number)
-		self:_updateAnimation(deltaTime)
+		self:_step(deltaTime)
 	end)
 end
 
-function dragLayer.new(parent: Instance): DragLayer
-	local frame = Instance.new("Frame")
-	frame.Name = "InventoryDragLayer"
-	frame.AnchorPoint = Vector2.new(0.5, 0.5)
-	frame.BackgroundTransparency = 1
-	frame.BorderSizePixel = 0
-	frame.ClipsDescendants = false
-	frame.Size = UDim2.fromOffset(1, 1)
-	frame.Visible = false
-	frame.ZIndex = 100
-	frame.Parent = parent
-
-	local uiScale = Instance.new("UIScale")
-	uiScale.Name = "DragScale"
-	uiScale.Scale = hiddenScale
-	uiScale.Parent = frame
-
-	local intentLabel = Instance.new("TextLabel")
-	intentLabel.Name = "Intent"
-	intentLabel.AnchorPoint = Vector2.new(0.5, 0)
-	intentLabel.BackgroundColor3 = Color3.fromRGB(145, 36, 30)
-	intentLabel.BackgroundTransparency = 0.15
-	intentLabel.BorderSizePixel = 0
-	intentLabel.Font = Enum.Font.GothamBold
-	intentLabel.Position = UDim2.new(0.5, 0, 1, 6)
-	intentLabel.Size = UDim2.new(1, 24, 0, 22)
-	intentLabel.TextColor3 = Color3.new(1, 1, 1)
-	intentLabel.TextSize = 12
-	intentLabel.Visible = false
-	intentLabel.ZIndex = 200
-	intentLabel.Parent = frame
-
-	local intentCorner = Instance.new("UICorner")
-	intentCorner.CornerRadius = UDim.new(0, 5)
-	intentCorner.Parent = intentLabel
-
-	local animator = GuiAnimator.new(frame)
-	animator:addSpring(
-		positionSpringKey,
-		Vector2.zero,
-		positionSpringFrequency,
-		positionSpringDamping,
-		positionSpringMass,
-		positionSpringSpeed
-	)
-	animator:addPositionSpringTrack(positionTrackKey, frame, positionSpringKey, true)
-	animator:addScalarSpring(
-		scaleSpringKey,
-		hiddenScale,
-		scaleSpringFrequency,
-		scaleSpringDamping,
-		scaleSpringMass,
-		scaleSpringSpeed
-	)
-	animator:addNumberSpringTrack(scaleTrackKey, function(scale: number)
-		uiScale.Scale = math.max(scale, 0)
-	end, scaleSpringKey, 0)
-
-	local self: DragLayer = (
-		setmetatable({
-			frame = frame,
-			intentLabel = intentLabel,
-			ghost = nil,
-			animator = animator,
-			renderConnection = nil,
-			pointerOffset = Vector2.zero,
-			isHiding = false,
-			destroyed = false,
-		}, dragLayer) :: unknown
-	) :: DragLayer
-	return self
-end
-
-function dragLayer:show(sourceButton: GuiButton, point: Vector2): ()
-	local frame = self.frame
-	local animator = self.animator
-	if frame == nil or animator == nil then
+function dragLayer._step(self: DragLayer, deltaTime: number): ()
+	local dragged = self.dragged
+	local swap = self.swap
+	if dragged == nil or swap == nil then
+		self:_stop()
 		return
 	end
 
-	self:_clearGhost()
-	local ghost = sourceButton:Clone()
-	assert(ghost:IsA("GuiButton"), "drag ghost must remain a GuiButton")
-	ghost.Name = "DraggedSlot"
-	ghost.Active = false
-	ghost.AnchorPoint = Vector2.new(0.5, 0.5)
-	ghost.AutoButtonColor = false
-	ghost.LayoutOrder = 0
-	ghost.Position = UDim2.fromScale(0.5, 0.5)
-	ghost.Selectable = false
-	ghost.Size = UDim2.fromScale(1, 1)
-	ghost.ZIndex = 101
+	dragged:step(deltaTime)
+	swap:step(deltaTime)
 
-	for _, descendant in ghost:GetDescendants() do
-		if descendant:IsA("UIDragDetector") then
-			descendant:Destroy()
-		elseif descendant:IsA("GuiObject") then
-			descendant.ZIndex += 101
-			if descendant:IsA("GuiButton") then
-				descendant.Active = false
-				descendant.AutoButtonColor = false
-				descendant.Selectable = false
-			end
+	if self.isSwapReturning and swap:hasLanded(landedDistance) then
+		swap:release()
+		self.isSwapReturning = false
+	end
+
+	if self.phase == "idle" then
+		if not swap:isLifted() then
+			self:_stop()
 		end
-	end
-
-	local sourceSize = sourceButton.AbsoluteSize
-	local width = math.max(sourceSize.X, 1)
-	local height = math.max(sourceSize.Y, 1)
-	frame.Size = UDim2.fromOffset(width, height)
-	self.pointerOffset = Vector2.new(dragOffset + width / 2, dragOffset + height / 2)
-	self.ghost = ghost
-	ghost.Parent = frame
-
-	local targetPosition = point + self.pointerOffset
-	animator:snapSpring(positionSpringKey, targetPosition)
-	animator:snapSpring(scaleSpringKey, Vector2.new(hiddenScale, 0))
-	animator:setSpring(scaleSpringKey, Vector2.new(activeScale, 0))
-	self.isHiding = false
-	frame.Visible = true
-	self:_start()
-end
-
-function dragLayer:update(point: Vector2): ()
-	local animator = self.animator
-	if animator then
-		animator:setSpring(positionSpringKey, point + self.pointerOffset)
-	end
-end
-
-function dragLayer:setIntent(intent: DragIntent): ()
-	local intentLabel = self.intentLabel
-	if intentLabel then
-		intentLabel.Text = intent
-		intentLabel.Visible = true
-	end
-end
-
-function dragLayer:hide(): ()
-	local frame = self.frame
-	local animator = self.animator
-	if frame == nil or animator == nil or not frame.Visible then
 		return
 	end
 
-	self.isHiding = true
-	animator:setSpring(scaleSpringKey, Vector2.new(hiddenScale, 0))
+	if not dragged:isLifted() then
+		self:finish()
+		return
+	end
+
+	self.phaseElapsedSeconds += deltaTime
+	if self.phase == "returning" then
+		if dragged:hasLanded(landedDistance) or self.phaseElapsedSeconds >= returnMaxSeconds then
+			self:finish()
+		end
+		return
+	end
+
+	if self.phase == "confirming" and self.phaseElapsedSeconds >= confirmMaxSeconds then
+		self:finish()
+	end
+end
+
+function dragLayer._returnSwap(self: DragLayer): ()
+	local swap = self.swap
+	if swap == nil or self.isSwapReturning then
+		return
+	end
+
+	local swapButton = swap:getButton()
+	if swapButton == nil then
+		return
+	end
+
+	self.isSwapReturning = true
+	swap:moveToSlot(swapButton)
+end
+
+function dragLayer._previewSwap(self: DragLayer, targetButton: GuiButton): ()
+	local dragged = self.dragged
+	local swap = self.swap
+	if dragged == nil or swap == nil then
+		return
+	end
+
+	local sourceButton = dragged:getButton()
+	if sourceButton == nil then
+		return
+	end
+
+	local sourceCenter = dragged:slotCenter(sourceButton)
+	if swap:getButton() == targetButton then
+		self.isSwapReturning = false
+		swap:moveTo(sourceCenter, sourceButton.AbsoluteSize)
+		return
+	end
+
+	swap:release()
+	self.isSwapReturning = false
+
+	local targetCenter = swap:slotCenter(targetButton)
+	swap:lift(targetButton)
+	swap:snapTo(swapStartCenter(dragged, sourceCenter, targetCenter), targetButton.AbsoluteSize)
+	swap:moveTo(sourceCenter, sourceButton.AbsoluteSize)
+end
+
+function dragLayer.show(self: DragLayer, sourceButton: GuiButton): ()
+	local dragged = self.dragged
+	if dragged == nil or self.destroyed then
+		return
+	end
+
+	self:finish()
+	dragged:lift(sourceButton)
+	self.phase = "dragging"
+	self.phaseElapsedSeconds = 0
 	self:_start()
 end
 
-function dragLayer:destroy(): ()
+function dragLayer.update(self: DragLayer, point: Vector2, targetButton: GuiButton?, isSwap: boolean): ()
+	local root = self.root
+	local dragged = self.dragged
+	if root == nil or dragged == nil or self.phase ~= "dragging" then
+		return
+	end
+
+	if targetButton then
+		dragged:moveToSlot(targetButton)
+		dragged:setScale(snappedScale)
+	else
+		dragged:moveToPoint(point - root.AbsolutePosition)
+		dragged:setScale(activeScale)
+	end
+
+	if targetButton and isSwap then
+		self:_previewSwap(targetButton)
+	else
+		self:_returnSwap()
+	end
+end
+
+function dragLayer.confirm(self: DragLayer, targetButton: GuiButton, isSwap: boolean): ()
+	local dragged = self.dragged
+	if dragged == nil or self.phase ~= "dragging" then
+		return
+	end
+
+	self.phase = "confirming"
+	self.phaseElapsedSeconds = 0
+	dragged:moveToSlot(targetButton)
+	dragged:setScale(snappedScale)
+
+	if isSwap then
+		self:_previewSwap(targetButton)
+	else
+		self:_returnSwap()
+	end
+end
+
+function dragLayer.relocate(self: DragLayer, currentButton: GuiButton, displacedButton: GuiButton?): ()
+	local dragged = self.dragged
+	local swap = self.swap
+	if dragged == nil or swap == nil or self.phase == "idle" then
+		return
+	end
+
+	local previousButton = dragged:getButton()
+	if previousButton == currentButton then
+		return
+	end
+
+	local wasPreviewingCurrent = swap:getButton() == currentButton
+	swap:release()
+	dragged:release()
+	dragged:liftInPlace(currentButton)
+	self.isSwapReturning = false
+
+	if self.phase == "returning" then
+		dragged:moveToSlot(currentButton)
+	end
+
+	if displacedButton == nil then
+		return
+	end
+
+	swap:liftInPlace(displacedButton)
+	if not wasPreviewingCurrent then
+		swap:snapToSlot(currentButton)
+	end
+	swap:moveToSlot(displacedButton)
+	self.isSwapReturning = true
+end
+
+function dragLayer.finish(self: DragLayer): ()
+	if self.phase == "idle" then
+		return
+	end
+
+	self.phase = "idle"
+	self.phaseElapsedSeconds = 0
+	self.isSwapReturning = false
+
+	local dragged = self.dragged
+	if dragged then
+		dragged:release()
+	end
+
+	local swap = self.swap
+	if swap then
+		swap:release()
+	end
+end
+
+function dragLayer.cancel(self: DragLayer): ()
+	local dragged = self.dragged
+	if dragged == nil or self.phase == "idle" or self.phase == "returning" then
+		return
+	end
+
+	local sourceButton = dragged:getButton()
+	if sourceButton == nil then
+		self:finish()
+		return
+	end
+
+	self.phase = "returning"
+	self.phaseElapsedSeconds = 0
+	dragged:moveToSlot(sourceButton)
+	dragged:setScale(snappedScale)
+	self:_returnSwap()
+	self:_start()
+end
+
+function dragLayer.destroy(self: DragLayer): ()
 	if self.destroyed then
 		return
 	end
-
 	self.destroyed = true
+
 	self:_stop()
-	self:_clearGhost()
-	local animator = self.animator
-	self.animator = nil
-	if animator then
-		animator:destroy()
+	self:finish()
+
+	local dragged = self.dragged
+	self.dragged = nil
+	if dragged then
+		dragged:destroy()
 	end
-	local frame = self.frame
-	if frame then
-		frame:Destroy()
+
+	local swap = self.swap
+	self.swap = nil
+	if swap then
+		swap:destroy()
 	end
-	table.clear(self)
+
+	local root = self.root
+	self.root = nil
+	if root then
+		root:Destroy()
+	end
 end
 
 return dragLayer
