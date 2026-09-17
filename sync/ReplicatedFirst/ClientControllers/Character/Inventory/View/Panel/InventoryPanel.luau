@@ -13,6 +13,7 @@ local ContextMenu = require(script.Parent.ContextMenu)
 local DisabledOverlay = require(script.Parent.DisabledOverlay)
 local DragController = require(script.Parent.Parent.Parent.Drag.DragController)
 local DropZoneBanner = require(replicatedFirst.ClientControllers.Player.Interface.Components.DropZoneBanner)
+local InventoryPanelAnimator = require(script.Parent.InventoryPanelAnimator)
 local InventoryRequests = require(script.Parent.Parent.Parent.Requests.InventoryRequests)
 local InventoryStore = require(script.Parent.Parent.Parent.InventoryStore)
 local ItemDisplay = require(script.Parent.Parent.ItemDisplay)
@@ -131,7 +132,7 @@ return function(props: Props)
 		Position = Theme.Geometry.PanelPosition,
 		Size = Theme.Geometry.PanelSize,
 
-		Visible = props.isOpen,
+		Visible = false,
 		create("Frame")({
 			Name = "InventoryContent",
 			AnchorPoint = Vector2.new(1, 0.5),
@@ -253,6 +254,15 @@ return function(props: Props)
 		}),
 	})
 
+	local panelAnimator = InventoryPanelAnimator.new(panel)
+	vide.effect(function()
+		local isOpen = props.isOpen()
+		if not isOpen then
+			selected(nil)
+		end
+		panelAnimator:setOpen(isOpen)
+	end)
+	vide.cleanup(panelAnimator)
 	vide.cleanup(props.registry:registerContainer(panel))
 	return panel
 end

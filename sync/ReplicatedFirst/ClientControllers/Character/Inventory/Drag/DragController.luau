@@ -22,6 +22,7 @@ type DragSession = {
 	zone: protocol.Zone,
 	index: number,
 	descriptor: protocol.ItemDescriptor,
+	sourceButton: GuiButton,
 	startPosition: Vector2,
 	moved: boolean,
 }
@@ -36,7 +37,7 @@ export type DragController = {
 	detectors: { [UIDragDetector]: DragSource },
 	changedConnection: RBXScriptConnection?,
 	_updateDetectors: (self: DragController) -> (),
-	_begin: (self: DragController, source: DragSource, inputPosition: unknown) -> (),
+	_begin: (self: DragController, source: DragSource, sourceButton: GuiButton, inputPosition: unknown) -> (),
 	_continue: (self: DragController, inputPosition: unknown) -> (),
 	_end: (self: DragController, inputPosition: unknown) -> boolean,
 	attach: (self: DragController, button: GuiButton, source: DragSource, onActivated: (() -> ())?) -> () -> (),
@@ -101,7 +102,7 @@ function dragController:_updateDetectors()
 	end
 end
 
-function dragController:_begin(source: DragSource, inputPosition: unknown)
+function dragController:_begin(source: DragSource, sourceButton: GuiButton, inputPosition: unknown)
 	local store = self.store
 	local layer = self.layer
 	if store == nil or layer == nil then
@@ -117,6 +118,7 @@ function dragController:_begin(source: DragSource, inputPosition: unknown)
 		zone = entry.zone,
 		index = entry.index,
 		descriptor = entry.descriptor,
+		sourceButton = sourceButton,
 		startPosition = point,
 		moved = false,
 	}
@@ -135,7 +137,7 @@ function dragController:_continue(inputPosition: unknown)
 			return
 		end
 		session.moved = true
-		layer:show(session.descriptor, point)
+		layer:show(session.sourceButton, point)
 	end
 	layer:update(point)
 	self.hovered = registry:hitTest(point)
@@ -229,7 +231,7 @@ function dragController:attach(button: GuiButton, source: DragSource, onActivate
 	self:_updateDetectors()
 	local connections: { [string]: RBXScriptConnection } = {
 		start = detector.DragStart:Connect(function(inputPosition)
-			self:_begin(source, inputPosition)
+			self:_begin(source, button, inputPosition)
 		end),
 		continue = detector.DragContinue:Connect(function(inputPosition)
 			self:_continue(inputPosition)

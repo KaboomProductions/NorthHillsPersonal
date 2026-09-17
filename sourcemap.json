@@ -522,14 +522,6 @@
                           ]
                         },
                         {
-                          "name": "DragLayer",
-                          "className": "ModuleScript",
-                          "guid": "34654",
-                          "filePaths": [
-                            "sync/ReplicatedFirst/ClientControllers/Character/Inventory/Drag/DragLayer.luau"
-                          ]
-                        },
-                        {
                           "name": "SlotRegistry",
                           "className": "ModuleScript",
                           "guid": "34655",
@@ -258397,9 +258389,74 @@
           ]
         }
       ]
+    },
+    {
+      "name": "ReplicatedFirst",
+      "className": "ReplicatedFirst",
+      "guid": "9240",
+      "children": [
+        {
+          "name": "ClientControllers",
+          "className": "Folder",
+          "guid": "17322",
+          "children": [
+            {
+              "name": "Character",
+              "className": "Folder",
+              "guid": "17323",
+              "children": [
+                {
+                  "name": "Inventory",
+                  "className": "ModuleScript",
+                  "guid": "34626",
+                  "children": [
+                    {
+                      "name": "View",
+                      "className": "ModuleScript",
+                      "guid": "34642",
+                      "children": [
+                        {
+                          "name": "Panel",
+                          "className": "Folder",
+                          "guid": "17330",
+                          "children": [
+                            {
+                              "name": "InventoryPanelAnimator",
+                              "className": "ModuleScript",
+                              "guid": "1456758",
+                              "filePaths": [
+                                "sync/ReplicatedFirst/ClientControllers/Character/Inventory/View/Panel/InventoryPanelAnimator.luau"
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Drag",
+                      "className": "Folder",
+                      "guid": "17326",
+                      "children": [
+                        {
+                          "name": "DragLayer",
+                          "className": "ModuleScript",
+                          "guid": "1456760",
+                          "filePaths": [
+                            "sync/ReplicatedFirst/ClientControllers/Character/Inventory/Drag/DragLayer.luau"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "_azul": {
-    "placeId": 71366022997493
+    "placeId": 82219847644832
   }
 }
