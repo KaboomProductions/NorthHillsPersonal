@@ -1,4 +1,3 @@
-local EncodingService = game:GetService("EncodingService")
 export type booleanRequestTable = { [string]: boolean }
 export type numberModifierTable = { [string]: number }
 
