@@ -1,4 +1,5 @@
 --!strict
+--# selene: allow(mixed_table)
 
 local replicatedFirst = game:GetService("ReplicatedFirst")
 local replicatedStorage = game:GetService("ReplicatedStorage")
@@ -129,6 +130,7 @@ return function(props: Props)
 		BackgroundTransparency = 1,
 		Position = Theme.Geometry.PanelPosition,
 		Size = Theme.Geometry.PanelSize,
+
 		Visible = props.isOpen,
 		create("Frame")({
 			Name = "InventoryContent",
@@ -136,6 +138,7 @@ return function(props: Props)
 			BackgroundTransparency = 1,
 			Position = UDim2.fromScale(1, 0.5),
 			Size = UDim2.fromScale(0.926931, 0.998366),
+
 			create("ImageLabel")({
 				Name = "BG",
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -162,6 +165,7 @@ return function(props: Props)
 							NumberSequenceKeypoint.new(1, 1),
 						}),
 					}),
+
 					create("ScrollingFrame")({
 						Name = "Holder",
 						AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -177,6 +181,7 @@ return function(props: Props)
 						Size = UDim2.fromScale(1.00033, 0.999454),
 						TopImage = Theme.Images.ScrollBarTop,
 						VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
+
 						create("UIListLayout")({
 							FillDirection = Enum.FillDirection.Horizontal,
 							HorizontalAlignment = Enum.HorizontalAlignment.Center,
@@ -184,6 +189,7 @@ return function(props: Props)
 							SortOrder = Enum.SortOrder.LayoutOrder,
 							Wraps = true,
 						}),
+
 						CategoryHeader({
 							occupied = function()
 								return countOccupied(props.state().storage)
@@ -192,10 +198,12 @@ return function(props: Props)
 								return props.state().storageCapacity
 							end,
 						}),
+
 						storageSlots,
 					}),
 				}),
 			}),
+
 			create("ImageLabel")({
 				Name = "Outline",
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -205,6 +213,7 @@ return function(props: Props)
 				Size = UDim2.fromScale(1, 1),
 				ZIndex = 0,
 			}),
+
 			create("ImageLabel")({
 				Name = "Scratches",
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -214,6 +223,7 @@ return function(props: Props)
 				Size = UDim2.fromScale(1, 1),
 				ZIndex = 1,
 			}),
+
 			PanelBanner({}),
 			DropZoneBanner({
 				registerDropZone = function(gui: GuiObject): () -> ()

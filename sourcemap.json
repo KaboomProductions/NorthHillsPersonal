@@ -20780,11 +20780,6 @@
           ]
         },
         {
-          "name": "Camera",
-          "className": "Camera",
-          "guid": "14325436"
-        },
-        {
           "name": "Camp_tower",
           "className": "Model",
           "guid": "34454",

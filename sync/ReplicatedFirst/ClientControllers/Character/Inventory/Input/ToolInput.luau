@@ -12,10 +12,12 @@ local toolControllerHost = require(script.Parent.Parent.ToolControllerHost)
 
 local toolInput = {}
 toolInput.__index = toolInput
+
 local activationAction = {
 	name = "activateTool",
 	keyCodes = { Enum.KeyCode.MouseLeftButton, Enum.KeyCode.ButtonR2 },
 }
+
 local mobileActivationName = "ActivateTool"
 
 export type Options = {
@@ -75,6 +77,20 @@ function toolInput:onActivation(pressed: boolean)
 	end
 end
 
+function toolInput:syncActivationState()
+	local binding = self.activationBind
+	if binding == nil then
+		return
+	end
+
+	local shouldEnable = not self:isBlocked()
+	if binding:IsEnabled() == shouldEnable then
+		return
+	end
+
+	binding:SetEnabled(shouldEnable)
+end
+
 function toolInput:syncActivationButton()
 	local host = self.toolHost
 	local controller = host and host:getController()
@@ -103,7 +119,9 @@ function toolInput:init()
 	self.activationConnection = inputBindings.connect(binding, function(_active: boolean, pressed: boolean)
 		self:onActivation(pressed)
 	end)
+	self:syncActivationState()
 	self.stateConnection = runService.Heartbeat:Connect(function()
+		self:syncActivationState()
 		local host = self.toolHost
 		if
 			self.pressedController and (self:isBlocked() or not host or host:getController() ~= self.pressedController)

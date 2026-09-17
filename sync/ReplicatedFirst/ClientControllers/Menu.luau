@@ -284,6 +284,11 @@ function menuController:updateVirtualCursor()
 		return
 	end
 
+	if guiService.MenuIsOpen then
+		gamepadService:DisableGamepadCursor()
+		return
+	end
+
 	if userInputService.PreferredInput == Enum.PreferredInput.Gamepad then
 		gamepadService:EnableGamepadCursor(mainFrame)
 	else
@@ -314,6 +319,12 @@ function menuController:connectVirtualCursorInput()
 		:Connect(function()
 			self:updateVirtualCursor()
 		end)
+
+	self.afterConnections.coreMenuClosed = guiService.MenuClosed:Connect(function()
+		task.defer(function()
+			self:updateVirtualCursor()
+		end)
+	end)
 end
 
 function menuController:createTransitionFrame()
@@ -479,7 +490,7 @@ function menuController:exitMenu()
 		warn("[Menu] Could not stream region in. Should fail function early?")
 	end
 	networking.events.replicateStreaming:FireServer()
-	
+
 	menuGui.Enabled = false
 	interfaceGui.Enabled = true
 
