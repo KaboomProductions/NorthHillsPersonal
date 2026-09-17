@@ -117,7 +117,7 @@ function climateController.preload()
 		recordStateInHistory(historyStateName)
 	end
 
-	climateController.loadState(statesByName.Wet) -- [initialStateName]
+	climateController.loadState(statesByName[initialStateName])
 end
 
 function climateController.applyEffects(state: ClimateState)
@@ -209,7 +209,7 @@ function climateController.decide()
 
 	if not graphEntry then
 		warn("[Climate] No graph entry for current state:", currentStateName, "— falling back to Dry")
-		climateController.loadState(statesByName.Wet)
+		climateController.loadState(statesByName.Dry)
 		return
 	end
 
@@ -225,6 +225,7 @@ function climateController.decide()
 	end
 
 	local shouldEscalate = math.random() < adjustedWeight
+
 	local nextStateName: string? = nil
 
 	if shouldEscalate and graphEntry.escalate then
@@ -233,7 +234,7 @@ function climateController.decide()
 		nextStateName = graphEntry.deEscalate
 	end
 
-	local nextState = statesByName.Wet -- nextStateName and statesByName[nextStateName] or statesByName.Dry
+	local nextState = nextStateName and statesByName[nextStateName] or statesByName.Dry
 
 	if nextState ~= nil then
 		climateController.loadState(nextState)

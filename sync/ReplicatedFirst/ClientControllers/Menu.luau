@@ -474,6 +474,12 @@ function menuController:presentStudio()
 end
 
 function menuController:exitMenu()
+	local success = pcall(player.RequestStreamAroundAsync, player, player.Character:GetPivot().Position, 5)
+	if not success then
+		warn("[Menu] Could not stream region in. Should fail function early?")
+	end
+	networking.events.replicateStreaming:FireServer()
+	
 	menuGui.Enabled = false
 	interfaceGui.Enabled = true
 
@@ -484,8 +490,6 @@ function menuController:exitMenu()
 	starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
 	self:destroyMenuUi()
-
-	networking.events.replicateStreaming:FireServer()
 	networking.events.replicateMenu:FireServer(false)
 
 	self:disableVirtualCursorMode()
